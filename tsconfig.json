@@ -1,0 +1,13 @@
+{
+	"compilerOptions": {
+		"target": "ESNext",
+		"strict": true,
+		"skipLibCheck": true,
+		"jsx": "react-jsx",
+		"lib": ["ESNext", "dom"],
+		"declaration": true,
+		"moduleResolution": "NodeNext",
+		"inlineSourceMap": true
+	},
+	"include": ["src"]
+}

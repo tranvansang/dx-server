@@ -64,10 +64,8 @@ export const expressContext = makeContext(async (
 			buffer = Buffer.from(data, charset)
 			break
 		case undefined:
-			// not found
-			buffer = Buffer.from('not found', charset)
-			res.statusCode = 404
-			break
+			// skip response. Some middleware may handle it outside the chain. For example, express middleware
+			return ret
 		default:
 			if (!res.getHeader('content-type')) res.setHeader('content-type', 'text/plain')
 			throw new Error(`unsupported response type ${type}`)
@@ -84,7 +82,7 @@ export const expressContext = makeContext(async (
 			await defer.promise
 			// skipped: response is already ended
 			// chunk is not fully flushed yet
-		} else await promisify(res.end.bind(res))() // to be consistent, we end the response immediately
+		} else await promisify(res.end.bind(res))(undefined) // to be consistent, we end the response immediately
 	} else {
 		// https://github.com/expressjs/express/blob/980d881e3b023db079de60477a2588a91f046ca5/lib/response.js#L210
 		if (res.statusCode === 204) { // No Content
@@ -115,7 +113,7 @@ export const expressContext = makeContext(async (
 			// fixme: not support content-encoding (gzip, deflate, br) for now
 		}
 
-		await promisify(res.end.bind(res))()
+		await promisify(res.end.bind(res))(undefined) // some express middleware, such as express-session, requires explicitly passing chunk
 	}
 	return ret
 })

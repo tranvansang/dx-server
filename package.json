@@ -1,6 +1,6 @@
 {
   "name": "dx-server",
-  "version": "0.0.1-pre-2",
+  "version": "0.0.1-pre-9",
   "main": "./cjs/index.js",
   "repository": "git@github.com:tranvansang/dx-server.git",
   "author": "Sang Tran <t@sang.jp>",

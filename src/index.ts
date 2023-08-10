@@ -1,4 +1,4 @@
-export {requestContext, responseContext} from './context.js'
+export {makeContext, requestContext, responseContext} from './context.js'
 export {
 	expressContext,
 	setHtml,
@@ -17,4 +17,4 @@ export {
 } from './body.js'
 export {router} from './route.js'
 export {catchApiError, catchError, notFound, notFoundApi} from './error.js'
-export {expressApp} from './expressApp.js'
+export {expressApp, expressRouter} from './expressApp.js'

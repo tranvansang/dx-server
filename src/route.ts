@@ -74,23 +74,24 @@ interface RouteContext {
 interface RouteDefinition {
 	[k: string]: (p: RouteContext) => any
 }
+
+interface RouterOptions extends RegexpToPathOptions {
+	prefix?: string
+}
+
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
 const allMethods = [
 	'get', 'head', 'post', 'put', 'delete', 'connect', 'options', 'trace', 'patch'
 ] as const
 type IRouter = {
-	[K in typeof allMethods[number]]: (definition: RouteDefinition, options?: RegexpToPathOptions) => IChainable
+	[K in typeof allMethods[number]]: (definition: RouteDefinition, options?: RouterOptions) => IChainable
 } & {
-	all(definition: RouteDefinition, options?: RegexpToPathOptions): IChainable
-	method(method: string, definition: RouteDefinition, options?: RegexpToPathOptions): IChainable
-}
-
-interface RouterOptions {
-	prefix?: string
+	all(definition: RouteDefinition, options?: RouterOptions): IChainable
+	method(method: string, definition: RouteDefinition, options?: RouterOptions): IChainable
 }
 
 export const router: IRouter = {
-	method(method, router, {prefix = '', ...options}: RegexpToPathOptions & RouterOptions = {}) {
+	method(method, router, {prefix = '', ...options}: RouterOptions = {}) {
 		return n => {
 			const req = requestContext.value
 			if (req.method !== method.toUpperCase()) return n()
@@ -108,7 +109,7 @@ export const router: IRouter = {
 			)()
 		}
 	},
-	all(router, {prefix = '', ...options}: RegexpToPathOptions & RouterOptions = {}) {
+	all(router, {prefix = '', ...options}: RouterOptions = {}) {
 		return n => {
 			const req = requestContext.value
 			return chain(

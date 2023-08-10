@@ -29,7 +29,6 @@ import {
 	expressApp,
 } from 'dx-server'
 
-// https://nodejs.org/en/docs/guides/anatomy-of-an-http-transaction
 const tcpServer = new Server()
 	.on('request', async (req, res) => {
 	try {

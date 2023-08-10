@@ -1,5 +1,12 @@
 export {requestContext, responseContext} from './context.js'
-export {expressContext, setHtml, setJson} from './express.js'
+export {
+	expressContext,
+	setHtml,
+	setJson,
+	setBuffer,
+	setRedirect,
+	setText
+} from './express.js'
 export {
 	bufferBodyContext,
 	jsonBodyContext,

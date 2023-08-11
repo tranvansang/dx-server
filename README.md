@@ -28,8 +28,7 @@ import {
 	urlencodedBodyContext,
 
 	router,
-	catchApiError, catchError, notFound, notFoundApi,
-	expressApp, expressRouter,
+	expressApp, expressRouter, chainExpressMiddlewares,
 } from 'dx-server'
 import express from 'express'
 import morgan from 'morgan'
@@ -87,25 +86,24 @@ const serverChain = chain(
 			}
 		}
 	},
-	expressApp(app => {
+	await expressApp(app => {
 		// any express feature can be used
 		// required express installed, with for e.g., `yarn add express`
 		app.set('trust proxy', true)
 		if (process.env.NODE_ENV !== 'production') app.set('json spaces', 2)
-
-		app.use(
-			morgan('common'), // in future, we will provide native implementation of express middlewares
-			// cookies, session, etc.
-			// session({
-			// 	secret: '123',
-			// 	resave: false,
-			// 	store: redisStore,
-			// 	saveUninitialized: true,
-			// 	// cookie: { secure: true }
-			// }),
-		)
 	}),
-	expressRouter(router => {
+	chainExpressMiddlewares(
+		morgan('common'), // in future, we will provide native implementation of express middlewares
+		// cookies, session, etc.
+		// session({
+		// 	secret: '123',
+		// 	resave: false,
+		// 	store: redisStore,
+		// 	saveUninitialized: true,
+		// 	// cookie: { secure: true }
+		// }),
+	),
+	await expressRouter(router => {
 		// setup express router
 		router.use('/public', express.static('public'))
 	}),
@@ -175,7 +173,6 @@ const tcpServer = new Server()
 const port = +(process.env.PORT ?? 3000)
 await promisify(tcpServer.listen.bind(tcpServer))(port)
 console.log(`server is listening at ${port}`)
-
 ```
 
 ## TODO

@@ -45,7 +45,6 @@ __metadata:
     "@types/node": ^20.4.9
     "@types/path-to-regexp": ^1.7.0
     "@types/qs": ^6.9.7
-    jchain: ^0.0.2
     jdefer: ^0.0.9
     jmisc: ^0.0.8
     path-to-regexp: ^6.2.1
@@ -94,13 +93,6 @@ __metadata:
   dependencies:
     function-bind: ^1.1.1
   checksum: b9ad53d53be4af90ce5d1c38331e712522417d017d5ef1ebd0507e07c2fbad8686fffb8e12ddecd4c39ca9b9b47431afbb975b8abf7f3c3b82c98e9aad052792
-  languageName: node
-  linkType: hard
-
-"jchain@npm:^0.0.2":
-  version: 0.0.2
-  resolution: "jchain@npm:0.0.2"
-  checksum: 39e13d6dca13e260b79a6bcaade8a0f207483a24b3c657fea6f27241f24ac5d87146e6fe20f5f8e7b424dbafd0d3b7843e4d73ed09b24b2e3a748e62c146f22f
   languageName: node
   linkType: hard
 

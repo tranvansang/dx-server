@@ -1,7 +1,6 @@
 import type {Key} from 'path-to-regexp'
 import {pathToRegexp} from 'path-to-regexp'
 import {requestContext} from './context.js'
-import chain, {type IChainable} from 'jchain'
 
 const cache: Record<string, any> = {}
 const cacheLimit = 10000
@@ -66,6 +65,14 @@ export function matchPattern<Params extends Record<Key['name'], string>>(
 	}
 }
 
+interface Chainable<
+	P extends any[] = any[],
+	R = any,
+	Next = (...np: any[]) => any,
+> {
+	(next: Next, ...p: P): R
+}
+
 interface RouteContext {
 	matched: string
 	next(): any
@@ -84,45 +91,38 @@ const allMethods = [
 	'get', 'head', 'post', 'put', 'delete', 'connect', 'options', 'trace', 'patch'
 ] as const
 type IRouter = {
-	[K in typeof allMethods[number]]: (definition: RouteDefinition, options?: RouterOptions) => IChainable
+	[K in typeof allMethods[number]]: (definition: RouteDefinition, options?: RouterOptions) => Chainable
 } & {
-	all(definition: RouteDefinition, options?: RouterOptions): IChainable
-	method(method: string, definition: RouteDefinition, options?: RouterOptions): IChainable
+	all(definition: RouteDefinition, options?: RouterOptions): Chainable
+	method(method: string, definition: RouteDefinition, options?: RouterOptions): Chainable
 }
 
 export const router: IRouter = {
 	method(method, router, {prefix = '', ...options}: RouterOptions = {}) {
-		return n => {
+		return next => {
 			const req = requestContext.value
-			if (req.method !== method.toUpperCase()) return n()
-
-			return chain(
-				...Object.entries(router).map(([pattern, handler]) => next => {
-					const match = matchPattern(req.url ?? '', `${prefix}${pattern}`, options)
-					if (!match) return next()
-					return handler({
-						...match,
-						next,
-					})
-				}),
-				n
-			)()
+			if (req.method !== method.toUpperCase()) return next()
+			for (const [pattern, handler] of Object.entries(router)) {
+				const match = matchPattern(req.url ?? '', `${prefix}${pattern}`, options)
+				if (match) return handler({
+					...match,
+					next,
+				})
+			}
+			return next()
 		}
 	},
 	all(router, {prefix = '', ...options}: RouterOptions = {}) {
-		return n => {
+		return next => {
 			const req = requestContext.value
-			return chain(
-				...Object.entries(router).map(([pattern, handler]) => next => {
-					const match = matchPattern(req.url ?? '', `${prefix}${pattern}`, options)
-					if (!match) return next()
-					return handler({
-						...match,
-						next,
-					})
-				}),
-				n
-			)()
+			for (const [pattern, handler] of Object.entries(router)) {
+				const match = matchPattern(req.url ?? '', `${prefix}${pattern}`, options)
+				if (match) return handler({
+					...match,
+					next,
+				})
+			}
+			return next()
 		}
 	}
 }

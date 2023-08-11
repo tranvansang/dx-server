@@ -1,7 +1,6 @@
-import express, {type Express, type Router, type Request, type Response} from 'express'
+import express, {type Express, type Request, type Response, type Router} from 'express'
 import {requestContext, responseContext} from './context.js'
 import makeDefer from 'jdefer'
-import chain, { IChainable } from 'jchain'
 
 export const expressApp = async (setup: (app: Express) => any) => {
 	const symbol = Symbol('expressApp')
@@ -37,8 +36,6 @@ export const expressRouter = async (setup: (router: Router) => any) => {
 	}
 }
 
-export const chainExpressMiddlewares = (...middlewares: Array<(req: Request, res: Response, next: () => any) => any>) => chain(
-	...middlewares.map(middleware => (next => {
-		middleware(requestContext.value, responseContext.value, next)
-	}) satisfies IChainable)
-)
+export const chainExpressMiddlewares = (
+	...middlewares: Array<(req: Request, res: Response, next: () => any) => any>
+) => expressRouter(router => router.use(...middlewares))

@@ -4,16 +4,19 @@ import {entityTag, isFreshETag} from './etag.js'
 import {makeContext, requestContext, responseContext} from './context.js'
 
 export const expressContext = makeContext(async (
-	{jsonBeautify}: {
+	{jsonBeautify, disableEtag}: {
 		jsonBeautify?: boolean
+		disableEtag?: boolean
 	} = {}
 ) => {
 	return {
-		beautify: jsonBeautify,
+		jsonBeautify,
+		disableEtag,
 	} as
 		{
 			charset?: BufferEncoding // not for redirect
-			beautify?: boolean // json only
+			jsonBeautify?: boolean // json only
+			disableEtag?: boolean
 		} & (
 		| {
 		type: 'text'
@@ -36,7 +39,7 @@ export const expressContext = makeContext(async (
 		data: string
 	}
 		)
-}, async (ret, {type, data, charset, beautify}) => {
+}, async (ret, {type, data, charset, jsonBeautify, disableEtag}) => {
 	const res = responseContext.value
 	const setContentType = (contentType: string) => {
 		if (res.headersSent || res.getHeader('content-type')) return
@@ -58,7 +61,7 @@ export const expressContext = makeContext(async (
 			break
 		case 'json':
 			setContentType('application/json')
-			buffer = Buffer.from(beautify ? JSON.stringify(data, null, 2) : JSON.stringify(data), charset)
+			buffer = Buffer.from(jsonBeautify ? JSON.stringify(data, null, 2) : JSON.stringify(data), charset)
 			break
 		case 'redirect':
 			buffer = Buffer.from(data, charset)
@@ -99,16 +102,19 @@ export const expressContext = makeContext(async (
 		} else {
 			// support: 304 (etag), zipping, file etag and last modified
 			res.setHeader('content-length', buffer.length)
-			const etag = entityTag(buffer)
-			const lastModified = res.getHeader('last-modified')
 
-			res.setHeader('ETag', etag)
-			if (isFreshETag(req, etag)) {
-				res.removeHeader('content-type')
-				res.removeHeader('content-length')
-				res.removeHeader('transfer-encoding')
-				res.statusCode = 304
-				// write nothing
+			if (!disableEtag) {
+				const etag = entityTag(buffer)
+				const lastModified = res.getHeader('last-modified')
+
+				res.setHeader('ETag', etag)
+				if (isFreshETag(req, etag)) {
+					res.removeHeader('content-type')
+					res.removeHeader('content-length')
+					res.removeHeader('transfer-encoding')
+					res.statusCode = 304
+					// write nothing
+				} else res.write(buffer)
 			} else res.write(buffer)
 			// fixme: not support content-encoding (gzip, deflate, br) for now
 		}
@@ -117,6 +123,9 @@ export const expressContext = makeContext(async (
 	}
 	return ret
 })
+
+// todo: support setStream
+// todo: support setFile (with stream or with buffer)
 
 export function setText(text: string, {status}: { status?: number } = {}) {
 	const response = responseContext.value
@@ -150,7 +159,7 @@ export function setJson(json: any, {status, beautify}: {
 	const express = expressContext.value
 	express.data = json
 	express.type = 'json'
-	if (beautify !== undefined) express.beautify = beautify
+	if (beautify !== undefined) express.jsonBeautify = beautify
 }
 
 export function setRedirect(url: string, status: 301 | 302) {

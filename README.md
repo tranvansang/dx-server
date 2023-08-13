@@ -69,7 +69,7 @@ const serverChain = chain(
 	next => {
 		// this is the difference between express and dx-server
 		// req, res can be accessed from anywhere via context which uses NodeJS's AsyncLocalStorage under the hood
-		responseContext.value.setHeader('cache-control', 'no-cache')
+		responseContext.value.setHeader('Cache-Control', 'no-cache')
 		next()
 	},
 	async next => {

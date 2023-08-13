@@ -2,6 +2,7 @@ import makeDefer from 'jdefer'
 import {promisify} from 'node:util'
 import {entityTag, isFreshETag} from './etag.js'
 import {makeContext, requestContext, responseContext} from './context.js'
+import {Writable} from 'node:stream'
 
 export const expressContext = makeContext(async (
 	{jsonBeautify, disableEtag}: {
@@ -38,6 +39,10 @@ export const expressContext = makeContext(async (
 		type: 'redirect'
 		data: string
 	}
+		| {
+		type: 'stream'
+		data: Writable
+	}
 		)
 }, async (ret, {type, data, charset, jsonBeautify, disableEtag}) => {
 	const res = responseContext.value
@@ -56,6 +61,10 @@ export const expressContext = makeContext(async (
 			buffer = Buffer.from(data, charset)
 			break
 		case 'buffer':
+			setContentType('application/octet-stream')
+			buffer = data
+			break
+		case 'stream':
 			setContentType('application/octet-stream')
 			buffer = data
 			break
@@ -100,22 +109,26 @@ export const expressContext = makeContext(async (
 		} else if (req.method === 'HEAD') {
 			// write nothing
 		} else {
-			// support: 304 (etag), zipping, file etag and last modified
-			res.setHeader('content-length', buffer.length)
+			if (Buffer.isBuffer(buffer)) {
+				// support: 304 (etag), zipping, file etag and last modified
+				res.setHeader('content-length', buffer.length)
 
-			if (!disableEtag) {
-				const etag = entityTag(buffer)
-				const lastModified = res.getHeader('last-modified')
+				if (!disableEtag) {
+					const etag = entityTag(buffer)
+					const lastModified = res.getHeader('last-modified')
 
-				res.setHeader('ETag', etag)
-				if (isFreshETag(req, etag)) {
-					res.removeHeader('content-type')
-					res.removeHeader('content-length')
-					res.removeHeader('transfer-encoding')
-					res.statusCode = 304
-					// write nothing
+					res.setHeader('ETag', etag)
+					if (isFreshETag(req, etag)) {
+						res.removeHeader('content-type')
+						res.removeHeader('content-length')
+						res.removeHeader('transfer-encoding')
+						res.statusCode = 304
+						// write nothing
+					} else res.write(buffer)
 				} else res.write(buffer)
-			} else res.write(buffer)
+			} else {
+				buffer.pipe(res)
+			}
 			// fixme: not support content-encoding (gzip, deflate, br) for now
 		}
 
@@ -124,7 +137,6 @@ export const expressContext = makeContext(async (
 	return ret
 })
 
-// todo: support setStream
 // todo: support setFile (with stream or with buffer)
 
 export function setText(text: string, {status}: { status?: number } = {}) {
@@ -147,6 +159,14 @@ export function setBuffer(buffer: Buffer, {status}: { status?: number } = {}) {
 	if (status) response.statusCode = status
 	express.data = buffer
 	express.type = 'buffer'
+}
+
+export function setStream(stream: Writable, {status}: { status?: number } = {}) {
+	const response = responseContext.value
+	const express = expressContext.value
+	if (status) response.statusCode = status
+	express.data = stream
+	express.type = 'stream'
 }
 
 export function setJson(json: any, {status, beautify}: {

@@ -1,8 +1,8 @@
 {
   "name": "dx-server",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "./cjs/index.js",
-  "repository": "git@github.com:tranvansang/dx-server.git",
+  "repository": "https://github.com/tranvansang/dx-server",
   "author": "Sang Tran <t@sang.jp>",
   "files": [
     "cjs",
@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "jdefer": "^0.0.9",
-    "jmisc": "^0.0.8",
+    "jmisc": "^0.0.9",
     "path-to-regexp": "^6.2.1",
     "qs": "^6.11.2"
   }

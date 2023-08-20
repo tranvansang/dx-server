@@ -46,7 +46,7 @@ __metadata:
     "@types/path-to-regexp": ^1.7.0
     "@types/qs": ^6.9.7
     jdefer: ^0.0.9
-    jmisc: ^0.0.8
+    jmisc: ^0.0.9
     path-to-regexp: ^6.2.1
     qs: ^6.11.2
     type-fest: ^4.2.0
@@ -103,10 +103,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jmisc@npm:^0.0.8":
-  version: 0.0.8
-  resolution: "jmisc@npm:0.0.8"
-  checksum: 5c61806e9656424e6e3d7d6dd89033f90f417977cf11e8d7e867c6cb4011d18eda19e484a341dc3ca5fa85d8d7032d0e8202fcc0bd3b07f8c2e009f3d83b5014
+"jmisc@npm:^0.0.9":
+  version: 0.0.9
+  resolution: "jmisc@npm:0.0.9"
+  checksum: 8d20e945027d2ffa1a066c2f05e19650355295ef48f3e55a1a91f31d9c65e9dbdc86b598f3c8460b9d33fc348a80c311ffac6adb9b05a9e7b863d2b17d80cdf5
   languageName: node
   linkType: hard
 

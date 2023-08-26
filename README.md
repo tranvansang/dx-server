@@ -18,7 +18,14 @@ import chain from 'jchain'
 import {
 	makeContext, requestContext, responseContext,
 
-	expressContext, setHtml, setJson,
+	expressContext,
+	setHtml,
+	setJson,
+	setText,
+	setBuffer,
+	setRedirect,
+	setNodeStream,
+	setWebStream,
 
 	bufferBodyContext,
 	jsonBodyContext,

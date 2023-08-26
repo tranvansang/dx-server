@@ -2,7 +2,7 @@ import makeDefer from 'jdefer'
 import {promisify} from 'node:util'
 import {entityTag, isFreshETag} from './etag.js'
 import {makeContext, requestContext, responseContext} from './context.js'
-import {Writable} from 'node:stream'
+import {Readable} from 'node:stream'
 
 export const expressContext = makeContext(async (
 	{jsonBeautify, disableEtag}: {
@@ -40,8 +40,12 @@ export const expressContext = makeContext(async (
 		data: string
 	}
 		| {
-		type: 'stream'
-		data: Writable
+		type: 'nodeStream'
+		data: Readable
+	}
+		| {
+		type: 'webStream'
+		data: ReadableStream
 	}
 		)
 }, async (ret, {type, data, charset, jsonBeautify, disableEtag}) => {
@@ -50,7 +54,7 @@ export const expressContext = makeContext(async (
 		if (res.headersSent || res.getHeader('content-type')) return
 		res.setHeader('content-type', `${contentType}${charset ? `; charset=${charset}` : ''}`)
 	}
-	let buffer
+	let bufferOrStream
 
 	switch (type) {
 		case 'text':
@@ -58,22 +62,26 @@ export const expressContext = makeContext(async (
 		case 'html':
 			setContentType('text/html')
 			// shared with text
-			buffer = Buffer.from(data, charset)
+			bufferOrStream = Buffer.from(data, charset)
 			break
 		case 'buffer':
 			setContentType('application/octet-stream')
-			buffer = data
+			bufferOrStream = data
 			break
-		case 'stream':
+		case 'nodeStream':
 			setContentType('application/octet-stream')
-			buffer = data
+			bufferOrStream = data
+			break
+		case 'webStream':
+			setContentType('application/octet-stream')
+			bufferOrStream = Readable.fromWeb(data as import('node:stream/web').ReadableStream)
 			break
 		case 'json':
 			setContentType('application/json')
-			buffer = Buffer.from(jsonBeautify ? JSON.stringify(data, null, 2) : JSON.stringify(data), charset)
+			bufferOrStream = Buffer.from(jsonBeautify ? JSON.stringify(data, null, 2) : JSON.stringify(data), charset)
 			break
 		case 'redirect':
-			buffer = Buffer.from(data, charset)
+			bufferOrStream = Buffer.from(data, charset)
 			break
 		case undefined:
 			// skip response. Some middleware may handle it outside the chain. For example, express middleware
@@ -109,12 +117,12 @@ export const expressContext = makeContext(async (
 		} else if (req.method === 'HEAD') {
 			// write nothing
 		} else {
-			if (Buffer.isBuffer(buffer)) {
+			if (Buffer.isBuffer(bufferOrStream)) {
 				// support: 304 (etag), zipping, file etag and last modified
-				res.setHeader('content-length', buffer.length)
+				res.setHeader('content-length', bufferOrStream.length)
 
 				if (!disableEtag) {
-					const etag = entityTag(buffer)
+					const etag = entityTag(bufferOrStream)
 					const lastModified = res.getHeader('last-modified')
 
 					res.setHeader('ETag', etag)
@@ -124,10 +132,10 @@ export const expressContext = makeContext(async (
 						res.removeHeader('transfer-encoding')
 						res.statusCode = 304
 						// write nothing
-					} else res.write(buffer)
-				} else res.write(buffer)
+					} else res.write(bufferOrStream)
+				} else res.write(bufferOrStream)
 			} else {
-				buffer.pipe(res)
+				bufferOrStream.pipe(res)
 			}
 			// fixme: not support content-encoding (gzip, deflate, br) for now
 		}
@@ -161,12 +169,20 @@ export function setBuffer(buffer: Buffer, {status}: { status?: number } = {}) {
 	express.type = 'buffer'
 }
 
-export function setStream(stream: Writable, {status}: { status?: number } = {}) {
+export function setNodeStream(stream: Readable, {status}: { status?: number } = {}) {
 	const response = responseContext.value
 	const express = expressContext.value
 	if (status) response.statusCode = status
 	express.data = stream
-	express.type = 'stream'
+	express.type = 'nodeStream'
+}
+
+export function setWebStream(stream: ReadableStream, {status}: { status?: number } = {}) {
+	const response = responseContext.value
+	const express = expressContext.value
+	if (status) response.statusCode = status
+	express.data = stream
+	express.type = 'webStream'
 }
 
 export function setJson(json: any, {status, beautify}: {

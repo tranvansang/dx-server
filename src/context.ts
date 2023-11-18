@@ -18,6 +18,11 @@ export const makeContext = <T, Params extends any[] = unknown[]>(
 				return end(await asyncLocalStorage.run(value, next), value)
 			}
 		},
+		with(value: T) {
+			return async <V>(next: () => V) => {
+				return end(await asyncLocalStorage.run(value, next), value)
+			}
+		},
 	}
 }
 

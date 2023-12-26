@@ -1,6 +1,6 @@
 {
   "name": "dx-server",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "main": "./cjs/index.js",
   "repository": "https://github.com/tranvansang/dx-server",
   "author": "Sang Tran <t@sang.jp>",
@@ -21,16 +21,16 @@
   "license": "MIT",
   "packageManager": "yarn@3.6.1",
   "devDependencies": {
-    "@types/node": "^20.4.9",
+    "@types/node": "^20.10.5",
     "@types/path-to-regexp": "^1.7.0",
-    "@types/qs": "^6.9.7",
-    "type-fest": "^4.2.0",
-    "typescript": "^5.1.6"
+    "@types/qs": "^6.9.11",
+    "type-fest": "^4.8.3",
+    "typescript": "^5.3.3"
   },
   "dependencies": {
     "jchain": "^0.0.6",
-    "jdefer": "^0.0.9",
-    "jmisc": "^0.0.9",
+    "jdefer": "^0.0.14",
+    "jmisc": "^0.0.10",
     "path-to-regexp": "^6.2.1",
     "qs": "^6.11.2"
   }

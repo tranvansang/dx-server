@@ -1,8 +1,8 @@
-import { type IChainable } from 'jchain'
+import { type Chainable } from 'jchain'
 import {setHtml, setJson} from './express.js'
 import {router} from './route.js'
 
-export const catchError: IChainable = async next => {
+export const catchError: Chainable = async next => {
 	try {
 		await next()
 	} catch (e) {
@@ -25,7 +25,7 @@ export const catchApiError = router.post({
 	}
 }, {end: false})
 
-export const notFound: IChainable = () => {
+export const notFound: Chainable = () => {
 	setHtml('not found', {status: 404})
 }
 export const notFoundApi = router.post({

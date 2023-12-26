@@ -81,7 +81,8 @@ export const expressContext = makeContext(async (
 			bufferOrStream = Buffer.from(jsonBeautify ? JSON.stringify(data, null, 2) : JSON.stringify(data), charset)
 			break
 		case 'redirect':
-			bufferOrStream = Buffer.from(data, charset)
+			res.setHeader('location', data)
+			bufferOrStream = Buffer.from('', charset)
 			break
 		case undefined:
 			// skip response. Some middleware may handle it outside the chain. For example, express middleware

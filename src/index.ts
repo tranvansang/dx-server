@@ -16,5 +16,4 @@ export {
 	urlencodedBodyContext
 } from './body.js'
 export {router} from './route.js'
-export {catchApiError, catchError, notFound, notFoundApi} from './error.js'
 export {expressApp, expressRouter, chainExpressMiddlewares} from './expressApp.js'

@@ -11,7 +11,7 @@ export const catchError: Chainable = async next => {
 	}
 }
 
-export const catchApiError = router.post({
+export const catchApiError: Chainable = router.post({
 	async '/api'({next}) {
 		try {
 			await next()
@@ -28,7 +28,7 @@ export const catchApiError = router.post({
 export const notFound: Chainable = () => {
 	setHtml('not found', {status: 404})
 }
-export const notFoundApi = router.post({
+export const notFoundApi: Chainable = router.post({
 	'/api'() {
 		setJson({
 			message: 'not found',

@@ -1,12 +1,12 @@
 export {makeContext, requestContext, responseContext} from './context.js'
 export {
-	expressContext,
+	dxContext,
 	setHtml,
 	setJson,
 	setBuffer,
 	setRedirect,
 	setText
-} from './express.js'
+} from './dx.js'
 export {
 	bufferBodyContext,
 	jsonBodyContext,
@@ -16,4 +16,3 @@ export {
 	urlencodedBodyContext
 } from './body.js'
 export {router} from './route.js'
-export {expressApp, expressRouter, chainExpressMiddlewares} from './expressApp.js'

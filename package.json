@@ -1,6 +1,6 @@
 {
   "name": "dx-server",
-  "version": "0.0.7",
+  "version": "0.1.0",
   "main": "./cjs/index.js",
   "repository": "https://github.com/tranvansang/dx-server",
   "author": "Sang Tran <t@sang.jp>",
@@ -12,6 +12,10 @@
     ".": {
       "import": "./esm/index.js",
       "require": "./cjs/index.js"
+    },
+    "express": {
+      "import": "./esm/express.js",
+      "require": "./cjs/express.js"
     }
   },
   "type": "module",
@@ -19,7 +23,7 @@
     "prepublish": "./compile.sh"
   },
   "license": "MIT",
-  "packageManager": "yarn@3.6.1",
+  "packageManager": "yarn@4.1.1",
   "devDependencies": {
     "@types/node": "^20.10.5",
     "@types/path-to-regexp": "^1.7.0",

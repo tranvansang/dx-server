@@ -18,7 +18,7 @@ import chain from 'jchain'
 import {
 	makeContext, requestContext, responseContext,
 
-	expressContext,
+	dxContext,
 	setHtml,
 	setJson,
 	setText,
@@ -34,9 +34,9 @@ import {
 	textBodyContext,
 	urlencodedBodyContext,
 
-	router,
-	expressApp, expressRouter, chainExpressMiddlewares,
+	router
 } from 'dx-server'
+import {expressApp, expressRouter, chainExpressMiddlewares} from 'dx-server/express'
 import express from 'express'
 import morgan from 'morgan'
 
@@ -66,7 +66,7 @@ const requireAuth = () => {
 }
 
 const serverChain = chain(
-	expressContext.chain({jsonBeautify: true}), // allows to use setHtml, setJson, setRaw, setBuffer, setFile, setRedirect, etc.
+	dxContext.chain({jsonBeautify: true}), // allows to use setHtml, setJson, setRaw, setBuffer, setFile, setRedirect, etc.
 	bufferBodyContext.chain(), // use raw buffer body as Buffer use bufferBodyContext.value. This is required for jsonBodyContext, urlencodedBodyContext, textBodyContext, rawBodyContext
 	jsonBodyContext.chain(), // to get body parsed as json use jsonBodyContext.value. Only available if content-type is application/json
 	urlencodedBodyContext.chain(), // to get body parsed as urlencoded use urlencodedBodyContext.value. Only available if content-type is application/x-www-form-urlencoded

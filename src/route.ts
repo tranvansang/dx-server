@@ -103,7 +103,7 @@ export const router: IRouter = {
 			const req = requestContext.value
 			if (req.method !== method.toUpperCase()) return next()
 			for (const [pattern, handler] of Object.entries(router)) {
-				const match = matchPattern(req.url ?? '', `${prefix}${pattern}`, options)
+				const match = matchPattern(new URL(req.url ?? '', 'https://example.com').pathname, `${prefix}${pattern}`, options)
 				if (match) return handler({
 					...match,
 					next,

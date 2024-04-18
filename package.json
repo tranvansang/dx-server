@@ -1,6 +1,6 @@
 {
   "name": "dx-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "./cjs/index.js",
   "repository": "https://github.com/tranvansang/dx-server",
   "author": "Sang Tran <t@sang.jp>",
@@ -13,7 +13,7 @@
       "import": "./esm/index.js",
       "require": "./cjs/index.js"
     },
-    "express": {
+    "./express": {
       "import": "./esm/express.js",
       "require": "./cjs/express.js"
     }

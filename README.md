@@ -9,11 +9,56 @@ yarn add dx-server jchain
 
 Check below sample with comment for more details.
 
-Sample additionally requires: `yarn install express morgan`
+Simple server
 
 ```javascript
-import {Server} from 'http'
-import {promisify} from 'util'
+import {Server} from 'node:http'
+import chain from 'jchain'
+import {
+	reqContext, resContext,
+	dxContext, setHtml, setJson, setText,
+	bufferBodyContext, jsonBodyContext, queryContext, rawBodyContext, textBodyContext, urlencodedBodyContext,
+	router,
+} from 'dx-server'
+
+new Server().on('request', async (req, res) => {
+	await chain(
+		reqContext.chain(req),
+		resContext.chain(res),
+		dxContext.chain(),
+		bufferBodyContext.chain(),
+		jsonBodyContext.chain(),
+		urlencodedBodyContext.chain(),
+		textBodyContext.chain(),
+		rawBodyContext.chain(),
+		queryContext.chain(),
+		next => {
+			resContext.value.setHeader('Cache-Control', 'no-cache')
+			console.log(reqContext.value.method, reqContext.value.url)
+			next()
+		},
+		async next => {
+			try {await next()} catch (e) {
+				console.error(e)
+				setHtml('internal server error (code: internal)', {status: 500})
+			}
+		},
+		router.get({
+			'/'() {setHtml('hello world')},
+			'/health'() {setText('ok')}
+		}),
+		() => {throw new Error('not found')},
+	)()
+}).listen(3000, () => console.log('server is listening at 3000'))
+```
+
+More complex server with express.
+This sample additionally requires: `yarn install express morgan`
+
+
+```javascript
+import {Server} from 'node:http'
+import {promisify} from 'node:util'
 import chain from 'jchain'
 import {
 	makeContext, reqContext, resContext,
@@ -36,7 +81,7 @@ import {
 
 	router
 } from 'dx-server'
-import {expressApp, expressRouter, expressMiddlewares} from 'dx-server/express'
+import {expressApp} from 'dx-server/express'
 import express from 'express'
 import morgan from 'morgan'
 
@@ -66,7 +111,7 @@ const requireAuth = () => {
 }
 
 const serverChain = chain(
-	dxContext.chain({jsonBeautify: true}), // allows to use setHtml, setJson, setRaw, setBuffer, setFile, setRedirect, etc.
+	dxContext.chain({jsonBeautify: process.env.NODE_ENV !== 'production'}), // allows to use setHtml, setJson, setRaw, setBuffer, setFile, setRedirect, etc.
 	bufferBodyContext.chain(), // use raw buffer body as Buffer use bufferBodyContext.value. This is required for jsonBodyContext, urlencodedBodyContext, textBodyContext, rawBodyContext
 	jsonBodyContext.chain(), // to get body parsed as json use jsonBodyContext.value. Only available if content-type is application/json
 	urlencodedBodyContext.chain(), // to get body parsed as urlencoded use urlencodedBodyContext.value. Only available if content-type is application/x-www-form-urlencoded
@@ -79,55 +124,34 @@ const serverChain = chain(
 		resContext.value.setHeader('Cache-Control', 'no-cache')
 		next()
 	},
-	async next => {
-		// global error catching for all following middlewares
+	async next => {// global error catching for all following middlewares
 		try {
 			await next()
-		} catch (e) {
-			// only app error message should be shown to user
+		} catch (e) {// only app error message should be shown to user
 			if (e instanceof ServerError) setHtml(`${e.message} (code: ${e.code})`, {status: e.status})
-			else {
-				// report system error
+			else {// report system error
 				console.error(e)
 				setHtml('internal server error (code: internal)', {status: 500})
 			}
 		}
 	},
-	await expressApp(app => {
-		// any express feature can be used
-		// required express installed, with for e.g., `yarn add express`
+	await expressApp(app => {// any express feature can be used. This requires express installed, with for e.g., `yarn add express`
 		app.set('trust proxy', true)
 		if (process.env.NODE_ENV !== 'production') app.set('json spaces', 2)
-	}),
-	expressMiddlewares(
-		morgan('common'), // in future, we will provide native implementation of express middlewares
-		// cookies, session, etc.
-		// session({
-		// 	secret: '123',
-		// 	resave: false,
-		// 	store: redisStore,
-		// 	saveUninitialized: true,
-		// 	// cookie: { secure: true }
-		// }),
-	),
-	await expressRouter(router => {
-		// setup express router
-		router.use('/public', express.static('public'))
+		app.use(morgan('common')) // in future, we will provide native implementation of express middlewares
+		app.use('/public', express.static('public'))
 	}),
 	authContext.chain(),
-	// example of catching error for all /api/* routes
-	router.post({
+	router.post({// example of catching error for all /api/* routes
 		async '/api'({next}) {
 			try {
 				await next()
 			} catch (e) {
-				// only app error message should be shown to user
-				if (e instanceof ServerError) setJson({
+				if (e instanceof ServerError) setJson({// only app error message should be shown to user
 					error: e.message,
 					code: e.code,
 				}, {status: e.status})
-				else {
-					// report system error
+				else {// report system error
 					console.error(e)
 					setJson({
 						message: 'internal server error',
@@ -154,11 +178,6 @@ const serverChain = chain(
 			setHtml('ok')
 		}
 	}),
-	router.post({ // api not found router
-		'/api'() {
-			throw new ServerError('not found', 404, 'not_found')
-		}
-	}, {end: false}),
 	() => { // not found router
 		throw new ServerError('not found', 404, 'not_found')
 	},
@@ -177,56 +196,12 @@ const tcpServer = new Server()
 		}
 	})
 
-const port = +(process.env.PORT ?? 3000)
-await promisify(tcpServer.listen.bind(tcpServer))(port)
-console.log(`server is listening at ${port}`)
-```
-
-Sample error boundary chains:
-```typescript
-import { type Chainable } from 'jchain'
-import {setHtml, setJson} from 'dx-server'
-import {router} from 'dx-server'
-
-export const catchError: Chainable = async next => {
-	try {
-		await next()
-	} catch (e) {
-		console.error(e)
-		setHtml('internal server error', {status: 500})
-	}
-}
-
-export const catchApiError: Chainable = router.post({
-	async '/api'({next}) {
-		try {
-			await next()
-		} catch (e) {
-			console.error(e)
-			setJson({
-				message: 'internal server error',
-				code: 'internal_server_error'
-			}, {status: 500})
-		}
-	}
-}, {end: false})
-
-export const notFound: Chainable = () => {
-	setHtml('not found', {status: 404})
-}
-export const notFoundApi: Chainable = router.post({
-	'/api'() {
-		setJson({
-			message: 'not found',
-			code: 'not_found'
-		}, {status: 404})
-	}
-}, {end: false})
+await promisify(tcpServer.listen.bind(tcpServer))(3000)
+console.log('server is listening at 3000')
 ```
 
 ## TODO
 Until these middlewares are available as native dx-server middlewares, express middlewares can be used with `expressApp()`
 - [ ] native static file serve, like 'static-serve'
 - [ ] logger like morgan
-- [ ] cookie, session
 - [ ] cors

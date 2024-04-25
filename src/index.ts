@@ -2,6 +2,8 @@ export {makeContext, reqContext, resContext} from './context.js'
 export {
 	dxContext,
 	setHtml,
+	setNodeStream,
+	setWebStream,
 	setJson,
 	setBuffer,
 	setRedirect,

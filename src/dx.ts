@@ -150,40 +150,40 @@ export const dxContext = makeContext(async (
 
 export function setText(text: string, {status}: { status?: number } = {}) {
 	const response = responseContext.value
-	const express = dxContext.value
+	const dx = dxContext.value
 	if (status) response.statusCode = status
-	express.data = text
-	express.type = 'text'
+	dx.data = text
+	dx.type = 'text'
 }
 
 export function setHtml(html: string, opts: { status?: number } = {}) {
 	setText(html, opts)
-	const express = dxContext.value
-	express.type = 'html'
+	const dx = dxContext.value
+	dx.type = 'html'
 }
 
 export function setBuffer(buffer: Buffer, {status}: { status?: number } = {}) {
 	const response = responseContext.value
-	const express = dxContext.value
+	const dx = dxContext.value
 	if (status) response.statusCode = status
-	express.data = buffer
-	express.type = 'buffer'
+	dx.data = buffer
+	dx.type = 'buffer'
 }
 
 export function setNodeStream(stream: Readable, {status}: { status?: number } = {}) {
 	const response = responseContext.value
-	const express = dxContext.value
+	const dx = dxContext.value
 	if (status) response.statusCode = status
-	express.data = stream
-	express.type = 'nodeStream'
+	dx.data = stream
+	dx.type = 'nodeStream'
 }
 
 export function setWebStream(stream: ReadableStream, {status}: { status?: number } = {}) {
 	const response = responseContext.value
-	const express = dxContext.value
+	const dx = dxContext.value
 	if (status) response.statusCode = status
-	express.data = stream
-	express.type = 'webStream'
+	dx.data = stream
+	dx.type = 'webStream'
 }
 
 export function setJson(json: any, {status, beautify}: {
@@ -193,16 +193,16 @@ export function setJson(json: any, {status, beautify}: {
 	const response = responseContext.value
 	if (status) response.statusCode = status
 
-	const express = dxContext.value
-	express.data = json
-	express.type = 'json'
-	if (beautify !== undefined) express.jsonBeautify = beautify
+	const dx = dxContext.value
+	dx.data = json
+	dx.type = 'json'
+	if (beautify !== undefined) dx.jsonBeautify = beautify
 }
 
 export function setRedirect(url: string, status: 301 | 302) {
 	const response = responseContext.value
-	const express = dxContext.value
+	const dx = dxContext.value
 	response.statusCode = status
-	express.data = url
-	express.type = 'redirect'
+	dx.data = url
+	dx.type = 'redirect'
 }

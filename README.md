@@ -36,7 +36,7 @@ import {
 
 	router
 } from 'dx-server'
-import {expressApp, expressRouter, chainExpressMiddlewares} from 'dx-server/express'
+import {expressApp, expressRouter, expressMiddlewares} from 'dx-server/express'
 import express from 'express'
 import morgan from 'morgan'
 
@@ -99,7 +99,7 @@ const serverChain = chain(
 		app.set('trust proxy', true)
 		if (process.env.NODE_ENV !== 'production') app.set('json spaces', 2)
 	}),
-	chainExpressMiddlewares(
+	expressMiddlewares(
 		morgan('common'), // in future, we will provide native implementation of express middlewares
 		// cookies, session, etc.
 		// session({

@@ -36,6 +36,6 @@ export const expressRouter = async (setup: (router: Router) => any) => {
 	}
 }
 
-export const chainExpressMiddlewares = (
+export const expressMiddlewares = (
 	...middlewares: Array<(req: Request, res: Response, next: () => any) => any>
 ) => expressRouter(router => router.use(...middlewares))

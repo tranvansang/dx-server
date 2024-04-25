@@ -91,8 +91,16 @@ export const urlencodedBodyContext = makeContext(async (
 	}
 })
 
-export const queryContext = makeContext(() => {
+export const queryContext = makeContext((
+	{simplify}: {
+		simplify?: boolean
+	} = {}
+) => {
 	const req = requestContext.value
 	const query = req.url?.split('?', 2)?.[1]
-	return query ? parse(query) : {}
+	return query
+		? simplify
+			? Object.fromEntries(new URLSearchParams(query))
+			: parse(query)
+		: {}
 })

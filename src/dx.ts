@@ -138,7 +138,7 @@ export const dxContext = makeContext(async (
 			} else {
 				bufferOrStream.pipe(res)
 			}
-			// fixme: not support content-encoding (gzip, deflate, br) for now
+			// we do not support content-encoding (gzip, deflate, br) and leave it to reverse proxy or CDN
 		}
 
 		await promisify(res.end.bind(res))(undefined) // some express middleware, such as express-session, requires explicitly passing chunk

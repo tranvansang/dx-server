@@ -1,7 +1,8 @@
 import {AsyncLocalStorage} from 'node:async_hooks'
-import {Promisable} from 'type-fest'
 import {IncomingMessage, ServerResponse} from 'node:http'
-import {identity} from 'jmisc'
+
+function identity<T>(x: T) {return x}
+type Promisable<T> = T | PromiseLike<T>
 
 export const makeContext = <T, Params extends any[] = unknown[]>(
 	maker: (...params: Params) => Promisable<T>,

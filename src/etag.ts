@@ -1,6 +1,6 @@
 // etag: https://github.com/jshttp/etag/blob/b9f0642256e63654287299d205bc6ced71b1a228/index.js#L39
 import crypto from 'node:crypto'
-import {requestContext} from './context.js'
+import {reqContext} from './context.js'
 import type {IncomingMessage} from 'node:http'
 
 export function entityTag(buf: Buffer, weak?: boolean) {

@@ -16,7 +16,7 @@ import {Server} from 'http'
 import {promisify} from 'util'
 import chain from 'jchain'
 import {
-	makeContext, requestContext, responseContext,
+	makeContext, reqContext, resContext,
 
 	dxContext,
 	setHtml,
@@ -53,7 +53,7 @@ class ServerError extends Error {
 
 // makeContext is a convenient way to create context
 const authContext = makeContext(() => {
-	const req = requestContext.value
+	const req = reqContext.value
 	// determine if user is authenticated
 	// for e.g.
 	if (req.headers.authorization) {
@@ -76,7 +76,7 @@ const serverChain = chain(
 	next => {
 		// this is the difference between express and dx-server
 		// req, res can be accessed from anywhere via context which uses NodeJS's AsyncLocalStorage under the hood
-		responseContext.value.setHeader('Cache-Control', 'no-cache')
+		resContext.value.setHeader('Cache-Control', 'no-cache')
 		next()
 	},
 	async next => {
@@ -168,8 +168,8 @@ const tcpServer = new Server()
 	.on('request', async (req, res) => {
 		try {
 			await chain(
-				requestContext.chain(req), // required for most middlewares
-				responseContext.chain(res), // required for most middlewares
+				reqContext.chain(req), // required for most middlewares
+				resContext.chain(res), // required for most middlewares
 				serverChain,
 			)()
 		} catch (e) {

@@ -31,6 +31,6 @@ export const makeContext = <T, Params extends any[] = unknown[]>(
 // url: full url without server, protocol, port.
 // headers: if headers are repeated, they are joined by comma. Header names are lowercased.
 // rawHeaders: list of header name and value in a flat array. Case is preserved.
-export const requestContext = makeContext<IncomingMessage, [IncomingMessage]>(identity)
-export const responseContext = makeContext<ServerResponse, [ServerResponse]>(identity)
+export const reqContext = makeContext<IncomingMessage, [IncomingMessage]>(identity)
+export const resContext = makeContext<ServerResponse, [ServerResponse]>(identity)
 

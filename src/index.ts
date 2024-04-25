@@ -1,4 +1,4 @@
-export {makeContext, requestContext, responseContext} from './context.js'
+export {makeContext, reqContext, resContext} from './context.js'
 export {
 	dxContext,
 	setHtml,

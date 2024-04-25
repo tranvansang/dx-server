@@ -1,7 +1,7 @@
 import makeDefer from 'jdefer'
 import {promisify} from 'node:util'
 import {entityTag, isFreshETag} from './etag.js'
-import {makeContext, requestContext, responseContext} from './context.js'
+import {makeContext, reqContext, resContext} from './context.js'
 import {Readable} from 'node:stream'
 
 export const dxContext = makeContext(async (
@@ -49,7 +49,7 @@ export const dxContext = makeContext(async (
 	}
 		)
 }, async (ret, {type, data, charset, jsonBeautify, disableEtag}) => {
-	const res = responseContext.value
+	const res = resContext.value
 	const setContentType = (contentType: string) => {
 		if (res.headersSent || res.getHeader('content-type')) return
 		res.setHeader('content-type', `${contentType}${charset ? `; charset=${charset}` : ''}`)
@@ -92,7 +92,7 @@ export const dxContext = makeContext(async (
 			throw new Error(`unsupported response type ${type}`)
 	}
 
-	const req = requestContext.value
+	const req = reqContext.value
 
 	if (res.headersSent) {
 		if (res.writableFinished) {
@@ -149,9 +149,9 @@ export const dxContext = makeContext(async (
 // todo: support setFile (with stream or with buffer)
 
 export function setText(text: string, {status}: { status?: number } = {}) {
-	const response = responseContext.value
+	const res = resContext.value
 	const dx = dxContext.value
-	if (status) response.statusCode = status
+	if (status) res.statusCode = status
 	dx.data = text
 	dx.type = 'text'
 }
@@ -163,25 +163,25 @@ export function setHtml(html: string, opts: { status?: number } = {}) {
 }
 
 export function setBuffer(buffer: Buffer, {status}: { status?: number } = {}) {
-	const response = responseContext.value
+	const res = resContext.value
 	const dx = dxContext.value
-	if (status) response.statusCode = status
+	if (status) res.statusCode = status
 	dx.data = buffer
 	dx.type = 'buffer'
 }
 
 export function setNodeStream(stream: Readable, {status}: { status?: number } = {}) {
-	const response = responseContext.value
+	const res = resContext.value
 	const dx = dxContext.value
-	if (status) response.statusCode = status
+	if (status) res.statusCode = status
 	dx.data = stream
 	dx.type = 'nodeStream'
 }
 
 export function setWebStream(stream: ReadableStream, {status}: { status?: number } = {}) {
-	const response = responseContext.value
+	const res = resContext.value
 	const dx = dxContext.value
-	if (status) response.statusCode = status
+	if (status) res.statusCode = status
 	dx.data = stream
 	dx.type = 'webStream'
 }
@@ -190,8 +190,8 @@ export function setJson(json: any, {status, beautify}: {
 	status?: number
 	beautify?: boolean
 } = {}) {
-	const response = responseContext.value
-	if (status) response.statusCode = status
+	const res = resContext.value
+	if (status) res.statusCode = status
 
 	const dx = dxContext.value
 	dx.data = json
@@ -200,9 +200,9 @@ export function setJson(json: any, {status, beautify}: {
 }
 
 export function setRedirect(url: string, status: 301 | 302) {
-	const response = responseContext.value
+	const res = resContext.value
 	const dx = dxContext.value
-	response.statusCode = status
+	res.statusCode = status
 	dx.data = url
 	dx.type = 'redirect'
 }

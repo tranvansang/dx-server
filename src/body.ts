@@ -1,7 +1,7 @@
 import {getContentStream, readStream} from './stream.js'
 import {parse} from 'qs'
 import {parseContentType} from './contentType.js'
-import {makeContext, requestContext} from './context.js'
+import {makeContext, reqContext} from './context.js'
 
 export const bufferBodyContext = makeContext(async (
 	{
@@ -10,7 +10,7 @@ export const bufferBodyContext = makeContext(async (
 		limit?: number // limit in bytes
 	} = {}
 ) => {
-	const req = requestContext.value
+	const req = reqContext.value
 
 	/**
 	 * Check if a request has a request body.
@@ -38,7 +38,7 @@ export const bufferBodyContext = makeContext(async (
 	)
 })
 const forceGetContentTypeParams = (expected: string) => {
-	const req = requestContext.value
+	const req = reqContext.value
 
 	const contentTypeRaw = req.headers['content-type']
 	if (!contentTypeRaw) return
@@ -96,7 +96,7 @@ export const queryContext = makeContext((
 		simplify?: boolean
 	} = {}
 ) => {
-	const req = requestContext.value
+	const req = reqContext.value
 	const query = req.url?.split('?', 2)?.[1]
 	return query
 		? simplify

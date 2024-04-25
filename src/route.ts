@@ -1,6 +1,6 @@
 import type {Key} from 'path-to-regexp'
 import {pathToRegexp} from 'path-to-regexp'
-import {requestContext} from './context.js'
+import {reqContext} from './context.js'
 
 const cache: Record<string, any> = {}
 const cacheLimit = 10000
@@ -100,7 +100,7 @@ type IRouter = {
 export const router: IRouter = {
 	method(method, router, {prefix = '', ...options}: RouterOptions = {}) {
 		return next => {
-			const req = requestContext.value
+			const req = reqContext.value
 			if (req.method !== method.toUpperCase()) return next()
 			for (const [pattern, handler] of Object.entries(router)) {
 				const match = matchPattern(new URL(req.url ?? '', 'https://example.com').pathname, `${prefix}${pattern}`, options)
@@ -114,7 +114,7 @@ export const router: IRouter = {
 	},
 	all(router, {prefix = '', ...options}: RouterOptions = {}) {
 		return next => {
-			const req = requestContext.value
+			const req = reqContext.value
 			for (const [pattern, handler] of Object.entries(router)) {
 				const match = matchPattern(req.url ?? '', `${prefix}${pattern}`, options)
 				if (match) return handler({

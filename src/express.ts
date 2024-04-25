@@ -31,7 +31,7 @@ export const expressRouter = async (setup: (router: Router) => any) => {
 		const defer = makeDefer()
 		req[symbol] = defer
 		router(req, resContext.value)
-		await defer.promise
+		await defer.promise // if express middleware handles the request, this will never resolve.
 		await next()
 	}
 }

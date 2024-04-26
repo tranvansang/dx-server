@@ -48,7 +48,7 @@ import {promisify} from 'node:util'
 import chain from 'jchain'
 import dxServer, {
 	getReq, getRes,
-	getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery,
+	getJson, getRaw, getText, getUrlEncoded, getQuery,
 	setHtml, setJson, setText, setBuffer, setRedirect, setNodeStream, setWebStream,
 	router,
 } from 'dx-server'

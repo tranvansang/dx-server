@@ -14,17 +14,14 @@ Simple server
 ```javascript
 import {Server} from 'node:http'
 import chain from 'jchain'
-import {reqContext, resContext, dxContext, setHtml, setText, router,} from 'dx-server'
+import dxServer, {getReq, getRes, router, setHtml, setText,} from 'dx-server'
 
-new Server().on('request', async (req, res) => {
-	await chain(
-		reqContext.chain(req),
-		resContext.chain(res),
-		dxContext.chain(),
+new Server().on('request', (req, res) => chain(
+		dxServer(req, res),
 		next => {
-			resContext.value.setHeader('Cache-Control', 'no-cache')
-			console.log(reqContext.value.method, reqContext.value.url)
-			next()
+			getRes().setHeader('Cache-Control', 'no-cache')
+			console.log(getReq().method, getReq().url)
+			return next()
 		},
 		async next => {
 			try {await next()} catch (e) {
@@ -38,7 +35,7 @@ new Server().on('request', async (req, res) => {
 		}),
 		() => {setHtml('not found', {status: 404})},
 	)()
-}).listen(3000, () => console.log('server is listening at 3000'))
+).listen(3000, () => console.log('server is listening at 3000'))
 ```
 
 More complex server with express.
@@ -49,18 +46,16 @@ This sample additionally requires: `yarn install express morgan`
 import {Server} from 'node:http'
 import {promisify} from 'node:util'
 import chain from 'jchain'
-import {
-	makeContext, reqContext, resContext,
-
-	dxContext,
+import dxServer, {
+	getReq, getRes,
 	getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery,
 	setHtml, setJson, setText, setBuffer, setRedirect, setNodeStream, setWebStream,
-
-	router
+	router,
 } from 'dx-server'
 import {expressApp} from 'dx-server/express'
 import express from 'express'
 import morgan from 'morgan'
+import {AsyncLocalStorage} from 'node:async_hooks'
 
 // it is best practice to create custom error class for non-system error
 class ServerError extends Error {
@@ -73,25 +68,21 @@ class ServerError extends Error {
 	}
 }
 
-// makeContext is a convenient way to create context
-const authContext = makeContext(() => {
-	const req = reqContext.value
-	// determine if user is authenticated
-	// for e.g.
-	if (req.headers.authorization) {
-		return {id: 1, name: 'joe'}
-	}
-})
+const authStorage = new AsyncLocalStorage()
+const authChain = async next => {
+	const auth = getReq().headers.authorization ? {id: 1, name: 'joe'} : undefined
+	return authStorage.run(auth, next)
+}
 
 const requireAuth = () => {
-	if (!authContext.value) throw new ServerError('unauthorized', 401, 'unauthorized')
+	if (!authStorage.getStore()) throw new ServerError('unauthorized', 401, 'unauthorized')
 }
 
 const serverChain = chain(
 	next => {
 		// this is the difference between express and dx-server
 		// req, res can be accessed from anywhere via context which uses NodeJS's AsyncLocalStorage under the hood
-		resContext.value.setHeader('Cache-Control', 'no-cache')
+		getRes().setHeader('Cache-Control', 'no-cache')
 		return next() // must return or await
 	},
 	async next => {// global error catching for all following middlewares
@@ -111,7 +102,7 @@ const serverChain = chain(
 		app.use(morgan('common')) // in future, we will provide native implementation of express middlewares
 		app.use('/public', express.static('public'))
 	}),
-	authContext.chain(),
+	authChain,
 	router.post({// example of catching error for all /api/* routes
 		async '/api'({next}) {
 			try {
@@ -137,7 +128,7 @@ const serverChain = chain(
 		},
 		'/api/me'() { // sample private router
 			requireAuth()
-			setJson({name: authContext.value.name})
+			setJson({name: authStorage.getStore().name})
 		},
 	}),
 	router.get({ // sample GET router
@@ -157,9 +148,7 @@ const tcpServer = new Server()
 	.on('request', async (req, res) => {
 		try {
 			await chain(
-				reqContext.chain(req), // required for most middlewares
-				resContext.chain(res), // required for most middlewares
-				dxContext.chain({jsonBeautify: process.env.NODE_ENV !== 'production'}), // basic dx-server context
+				dxServer(req, res, {jsonBeautify: process.env.NODE_ENV !== 'production'}), // basic dx-server context
 				serverChain,
 			)()
 		} catch (e) {
@@ -183,11 +172,15 @@ The associated results are calculated in the first time they are called and cach
 
 If you want to get these values synchronously, you can do as follows:
 ```javascript
-import {makeContext, getJson} from 'dx-server'
-const jsonContext = makeContext(() => getJson())
+import {AsyncLocalStorage} from 'node:async_hooks'
+import {getJson} from 'dx-server'
+const jsonStorage = new AsyncLocalStorage()
 
-chain(jsonContext.chain(), next => {
-	console.log(jsonContext.value) // json body can be accessed synchronously
-	return next()
-})
+chain(
+	async next => jsonStorage.run(await getJson(), next),
+	next => {
+		console.log(jsonContext.value) // json body can be accessed synchronously
+		return next()
+	}
+)
 ```

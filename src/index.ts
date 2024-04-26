@@ -1,6 +1,6 @@
-export {makeContext, reqContext, resContext} from './context.js'
 export {
-	dxContext,
+	getReq,
+	getRes,
 	setHtml,
 	setNodeStream,
 	setWebStream,
@@ -9,6 +9,7 @@ export {
 	setRedirect,
 	setText
 } from './dx.js'
+import {dxServer} from './dx.js'
 export {
 	setBufferBodyDefaultOptions,
 	getBuffer,
@@ -19,3 +20,5 @@ export {
 	getQuery,
 } from './body.js'
 export {router} from './route.js'
+
+export default dxServer

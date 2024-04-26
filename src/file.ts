@@ -1,12 +1,11 @@
-import {reqContext, resContext} from './context.js'
-import type {Chainable} from 'jchain'
+import {getReq, getRes} from './dx.js'
 
 export const serveFile = (
 	{prefix = ''}: {
 		prefix?: string
 	}
-): Chainable => next => {
-	const req = reqContext.value
-	const res = resContext.value
+) => next => {
+	const req = getReq()
+	const res = getRes()
 	if (req.method !== 'GET' && req.method !== 'HEAD') return next()
 }

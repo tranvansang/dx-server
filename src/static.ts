@@ -1,5 +1,6 @@
 // @ts-nocheck
-import {reqContext} from './context.js'
+
+import {getReq} from './dx.js'
 
 export function staticMiddleware(
 	{root}: {
@@ -8,7 +9,7 @@ export function staticMiddleware(
 	}
 ) {
 	return async (next: () => any) => {
-		const req = reqContext.value
+		const req = getReq()
 		if (req.method !== 'GET' && req.method !== 'HEAD') return next()
 
 		var forwardError = !fallthrough

@@ -1,7 +1,7 @@
 import {getContentStream, readStream} from './stream.js'
 import {parse} from 'qs'
 import {parseContentType} from './contentType.js'
-import {reqContext} from './context.js'
+import {getReq} from './dx.js'
 
 interface BufferBodyOptions {
 	limit: number
@@ -13,7 +13,7 @@ export function setBufferBodyDefaultOptions(options: Partial<BufferBodyOptions>)
 const bufferBodySymbol = Symbol('bufferBody')
 export async function getBuffer(options?: Partial<BufferBodyOptions>) {
 	const {limit} = {...bufferBodyDefaultOptions, ...options}
-	const req = reqContext.value
+	const req = getReq()
 	return req[bufferBodySymbol] ??= (async () => {
 		/**
 		 * Check if a request has a request body.
@@ -44,7 +44,7 @@ export async function getBuffer(options?: Partial<BufferBodyOptions>) {
 
 // if content-type is not as expected, return undefined
 function forceGetContentTypeParams(expected: string){
-	const req = reqContext.value
+	const req = getReq()
 
 	const contentTypeRaw = req.headers['content-type']
 	if (!contentTypeRaw) return
@@ -65,7 +65,7 @@ function forceGetCharset(expected: string) {
 
 const jsonBodySymbol = Symbol('jsonBody')
 export async function getJson(options?: Partial<BufferBodyOptions>) {
-	return reqContext.value[jsonBodySymbol] ??= (async () => {
+	return getReq()[jsonBodySymbol] ??= (async () => {
 		const charset = forceGetCharset('application/json')
 		if (!charset) return
 		const buffer = await getBuffer(options)
@@ -78,7 +78,7 @@ export async function getJson(options?: Partial<BufferBodyOptions>) {
 
 const rawBodySymbol = Symbol('rawBody')
 export async function getRaw(options?: Partial<BufferBodyOptions>) {
-	return reqContext.value[rawBodySymbol] ??= (async () => {
+	return getReq()[rawBodySymbol] ??= (async () => {
 		if (!forceGetContentTypeParams('application/octet-stream')) return
 		return await getBuffer(options)
 	})()
@@ -86,7 +86,7 @@ export async function getRaw(options?: Partial<BufferBodyOptions>) {
 
 const textBodySymbol = Symbol('textBody')
 export async function getText(options?: Partial<BufferBodyOptions>) {
-	return reqContext.value[textBodySymbol] ??= (async () => {
+	return getReq()[textBodySymbol] ??= (async () => {
 		const charset = forceGetCharset('text/plain')
 		if (!charset) return
 		const buffer = await getBuffer(options)
@@ -96,7 +96,7 @@ export async function getText(options?: Partial<BufferBodyOptions>) {
 
 const urlEncodedBodySymbol = Symbol('urlencodedBody')
 export async function getUrlEncoded({simplify, ...options}: Partial<BufferBodyOptions> & {simplify?: boolean} = {}) {
-	return reqContext.value[urlEncodedBodySymbol] ??= (async () => {
+	return getReq()[urlEncodedBodySymbol] ??= (async () => {
 		const charset = forceGetCharset('application/x-www-form-urlencoded')
 		if (!charset) return
 		const buffer = await getBuffer(options)
@@ -111,8 +111,8 @@ export async function getUrlEncoded({simplify, ...options}: Partial<BufferBodyOp
 
 const querySymbol = Symbol('query')
 export async function getQuery({simplify, ...options}: Partial<BufferBodyOptions> & {simplify?: boolean} = {}) {
-	return reqContext.value[querySymbol] ??= (async () => {
-		const query = reqContext.value.url?.split('?', 2)?.[1]
+	return getReq()[querySymbol] ??= (async () => {
+		const query = getReq().url?.split('?', 2)?.[1]
 		return query
 			? simplify
 				? Object.fromEntries(new URLSearchParams(query))

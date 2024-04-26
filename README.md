@@ -167,7 +167,8 @@ Until these middlewares are available as native dx-server middlewares, express m
 - [ ] cors
 
 ## Note:
-	`getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery` are all synchronous functions.
+
+`getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery` are all synchronous functions.
 The associated results are calculated in the first time they are called and cached for subsequent calls.
 
 If you want to get these values synchronously, you can do as follows:

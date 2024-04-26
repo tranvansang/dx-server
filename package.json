@@ -1,6 +1,6 @@
 {
   "name": "dx-server",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "main": "./cjs/index.js",
   "homepage": "https://github.com/tranvansang/dx-server",
   "repository": "https://github.com/tranvansang/dx-server",
@@ -17,6 +17,10 @@
     "./express": {
       "import": "./esm/express.js",
       "require": "./cjs/express.js"
+    },
+    "./helpers": {
+      "import": "./esm/helpers.js",
+      "require": "./cjs/helpers.js"
     }
   },
   "type": "module",

@@ -11,8 +11,6 @@ export {
 } from './dx.js'
 import {dxServer} from './dx.js'
 export {
-	setBufferBodyDefaultOptions,
-	getBuffer,
 	getJson,
 	getRaw,
 	getText,

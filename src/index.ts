@@ -10,11 +10,12 @@ export {
 	setText
 } from './dx.js'
 export {
-	bufferBodyContext,
-	jsonBodyContext,
-	queryContext,
-	rawBodyContext,
-	textBodyContext,
-	urlencodedBodyContext
+	setBufferBodyDefaultOptions,
+	getBuffer,
+	getJson,
+	getRaw,
+	getText,
+	getUrlEncoded,
+	getQuery,
 } from './body.js'
 export {router} from './route.js'

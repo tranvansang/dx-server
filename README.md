@@ -14,24 +14,13 @@ Simple server
 ```javascript
 import {Server} from 'node:http'
 import chain from 'jchain'
-import {
-	reqContext, resContext,
-	dxContext, setHtml, setJson, setText,
-	bufferBodyContext, jsonBodyContext, queryContext, rawBodyContext, textBodyContext, urlencodedBodyContext,
-	router,
-} from 'dx-server'
+import {reqContext, resContext, dxContext, setHtml, setText, router,} from 'dx-server'
 
 new Server().on('request', async (req, res) => {
 	await chain(
 		reqContext.chain(req),
 		resContext.chain(res),
 		dxContext.chain(),
-		bufferBodyContext.chain(),
-		jsonBodyContext.chain(),
-		urlencodedBodyContext.chain(),
-		textBodyContext.chain(),
-		rawBodyContext.chain(),
-		queryContext.chain(),
 		next => {
 			resContext.value.setHeader('Cache-Control', 'no-cache')
 			console.log(reqContext.value.method, reqContext.value.url)
@@ -47,7 +36,7 @@ new Server().on('request', async (req, res) => {
 			'/'() {setHtml('hello world')},
 			'/health'() {setText('ok')}
 		}),
-		() => {throw new Error('not found')},
+		() => {setHtml('not found', {status: 404})},
 	)()
 }).listen(3000, () => console.log('server is listening at 3000'))
 ```
@@ -64,20 +53,8 @@ import {
 	makeContext, reqContext, resContext,
 
 	dxContext,
-	setHtml,
-	setJson,
-	setText,
-	setBuffer,
-	setRedirect,
-	setNodeStream,
-	setWebStream,
-
-	bufferBodyContext,
-	jsonBodyContext,
-	queryContext,
-	rawBodyContext,
-	textBodyContext,
-	urlencodedBodyContext,
+	getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery,
+	setHtml, setJson, setText, setBuffer, setRedirect, setNodeStream, setWebStream,
 
 	router
 } from 'dx-server'
@@ -111,18 +88,11 @@ const requireAuth = () => {
 }
 
 const serverChain = chain(
-	dxContext.chain({jsonBeautify: process.env.NODE_ENV !== 'production'}), // allows to use setHtml, setJson, setRaw, setBuffer, setFile, setRedirect, etc.
-	bufferBodyContext.chain(), // use raw buffer body as Buffer use bufferBodyContext.value. This is required for jsonBodyContext, urlencodedBodyContext, textBodyContext, rawBodyContext
-	jsonBodyContext.chain(), // to get body parsed as json use jsonBodyContext.value. Only available if content-type is application/json
-	urlencodedBodyContext.chain(), // to get body parsed as urlencoded use urlencodedBodyContext.value. Only available if content-type is application/x-www-form-urlencoded
-	textBodyContext.chain(), // to get body parsed as text use textBodyContext.value. Only available if content-type is text/plain
-	rawBodyContext.chain(), // to get body as raw use rawBodyContext.value. Only available if content-type is application/octet-stream
-	queryContext.chain(), // to get query params use queryContext.value. Query is parsed via 'qs' package. If no query, return empty object {}
 	next => {
 		// this is the difference between express and dx-server
 		// req, res can be accessed from anywhere via context which uses NodeJS's AsyncLocalStorage under the hood
 		resContext.value.setHeader('Cache-Control', 'no-cache')
-		next()
+		return next() // must return or await
 	},
 	async next => {// global error catching for all following middlewares
 		try {
@@ -189,6 +159,7 @@ const tcpServer = new Server()
 			await chain(
 				reqContext.chain(req), // required for most middlewares
 				resContext.chain(res), // required for most middlewares
+				dxContext.chain({jsonBeautify: process.env.NODE_ENV !== 'production'}), // basic dx-server context
 				serverChain,
 			)()
 		} catch (e) {
@@ -205,3 +176,18 @@ Until these middlewares are available as native dx-server middlewares, express m
 - [ ] native static file serve, like 'static-serve'
 - [ ] logger like morgan
 - [ ] cors
+
+## Note:
+	`getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery` are all synchronous functions.
+The associated results are calculated in the first time they are called and cached for subsequent calls.
+
+If you want to get these values synchronously, you can do as follows:
+```javascript
+import {makeContext, getJson} from 'dx-server'
+const jsonContext = makeContext(() => getJson())
+
+chain(jsonContext.chain(), next => {
+	console.log(jsonContext.value) // json body can be accessed synchronously
+	return next()
+})
+```

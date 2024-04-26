@@ -38,6 +38,5 @@
     "jdefer": "^0.0.14",
     "path-to-regexp": "^6.2.2",
     "qs": "^6.12.1"
-  },
-  "packageManager": "yarn@1.22.19+sha1.4ba7fc5c6e704fce2066ecbfb0b0d8976fe62447"
+  }
 }

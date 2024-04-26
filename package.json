@@ -21,10 +21,9 @@
   },
   "type": "module",
   "scripts": {
-    "prepublish": "./compile.sh"
+    "prepublishOnly": "./compile.sh"
   },
   "license": "MIT",
-  "packageManager": "yarn@4.1.1",
   "devDependencies": {
     "@types/node": "^20.12.7",
     "@types/path-to-regexp": "^1.7.0",

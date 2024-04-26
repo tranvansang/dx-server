@@ -1,11 +1,4 @@
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/sdks
-!.yarn/versions
 .idea
 /cjs/
 /esm/
-node_modules
+node_modules/

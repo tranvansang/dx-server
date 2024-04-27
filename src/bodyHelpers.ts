@@ -94,8 +94,12 @@ export async function urlEncodedFromReq(req: IncomingMessage, options?: Partial<
 	}
 }
 
+export function urlFromReq(req: IncomingMessage) {
+	return new URL(req.url ?? '', 'https://example.com')
+}
+
 export async function queryFromReq(req: IncomingMessage, options?: Partial<BufferBodyOptions>) {
-	const query = new URL(req.url ?? '', 'https://example.com').searchParams.toString()
+	const query = urlFromReq(req).searchParams.toString()
 	const {simplifyQuery} = {...bodyDefaultOptions, ...options}
 	return simplifyQuery ? Object.fromEntries(new URLSearchParams(query)) : qs.parse(query)
 }

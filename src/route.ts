@@ -1,6 +1,7 @@
 import type {Key} from 'path-to-regexp'
 import {pathToRegexp} from 'path-to-regexp'
-import {getReq} from './dx.js'
+import {Chainable, getReq} from './dx.js'
+import {urlFromReq} from './bodyHelpers.js'
 
 const cache: Record<string, any> = {}
 const cacheLimit = 10000
@@ -65,14 +66,6 @@ export function matchPattern<Params extends Record<Key['name'], string>>(
 	}
 }
 
-interface Chainable<
-	P extends any[] = any[],
-	R = any,
-	Next = (...np: any[]) => any,
-> {
-	(next: Next, ...p: P): R
-}
-
 interface RouteContext {
 	matched: string
 	next(): any
@@ -103,7 +96,7 @@ export const router: IRouter = {
 			const req = getReq()
 			if (req.method !== method.toUpperCase()) return next()
 			for (const [pattern, handler] of Object.entries(router)) {
-				const match = matchPattern(new URL(req.url ?? '', 'https://example.com').pathname, `${prefix}${pattern}`, options)
+				const match = matchPattern(urlFromReq(req).pathname, `${prefix}${pattern}`, options)
 				if (match) return handler({
 					...match,
 					next,
@@ -116,7 +109,7 @@ export const router: IRouter = {
 		return next => {
 			const req = getReq()
 			for (const [pattern, handler] of Object.entries(router)) {
-				const match = matchPattern(req.url ?? '', `${prefix}${pattern}`, options)
+				const match = matchPattern(urlFromReq(req).pathname, `${prefix}${pattern}`, options)
 				if (match) return handler({
 					...match,
 					next,

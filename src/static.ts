@@ -1,72 +1,32 @@
-// @ts-nocheck
+import {Chainable, getReq, getRes} from './dx.js'
+import {SendOptions} from 'send'
+import {urlFromReq} from './bodyHelpers.js'
+import {sendFile} from './staticHelpers.js'
 
-import {getReq} from './dx.js'
-
-export function staticMiddleware(
-	{root}: {
-		root: string
-		maxAge?: number // max age in second
-	}
-) {
-	return async (next: () => any) => {
+export function chainStatic(
+	prefix: string,
+	options: SendOptions
+): Chainable {
+	return next => {
 		const req = getReq()
 		if (req.method !== 'GET' && req.method !== 'HEAD') return next()
 
-		var forwardError = !fallthrough
-		var originalUrl = parseUrl.original(req)
-		var path = parseUrl(req).pathname
+		if (!prefix.endsWith('/')) prefix += '/'
+		if (!prefix.startsWith('/')) prefix = '/' + prefix
 
-		// make sure redirect occurs at mount
-		if (path === '/' && originalUrl.pathname.substr(-1) !== '/') {
-			path = ''
-		}
+		const {pathname} = urlFromReq(req)
+		if (
+			!pathname.startsWith(prefix)
+			&& !pathname.endsWith('/')
+			&& pathname + '/' !== prefix
+		) return next()
 
-		// create send stream
-		var stream = send(req, path, opts)
-
-		// add directory handler
-		stream.on('directory', onDirectory)
-
-		// add headers listener
-		if (setHeaders) {
-			stream.on('headers', setHeaders)
-		}
-
-		// add file listener for fallthrough
-		if (fallthrough) {
-			stream.on('file', function onFile() {
-				// once file is determined, always forward error
-				forwardError = true
-			})
-		}
-
-		// forward errors
-		stream.on('error', function error(err) {
-			if (forwardError || !(err.statusCode < 500)) {
-				next(err)
-				return
-			}
-
-			next()
-		})
-
-		// pipe
-		stream.pipe(res)
+		return sendFile(
+			req,
+			getRes(),
+			pathname.slice(prefix.length - 1), // keep the trailing slash
+			options,
+			next,
+		)
 	}
-}
-
-/**
- * Collapse all leading slashes into a single slash
- * @private
- */
-function collapseLeadingSlashes (str: string) {
-	for (let i = 0; i < str.length; i++) {
-		if (str.charCodeAt(i) !== 0x2f /* / */) {
-			break
-		}
-	}
-
-	return i > 1
-		? '/' + str.slice(i)
-		: str
 }

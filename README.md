@@ -18,22 +18,48 @@ import dxServer, {getReq, getRes, router, setHtml, setText,} from 'dx-server'
 
 new Server().on('request', (req, res) => chain(
 		dxServer(req, res),
-		next => {
-			getRes().setHeader('Cache-Control', 'no-cache')
-			console.log(getReq().method, getReq().url)
-			return next()
-		},
 		async next => {
-			try {await next()} catch (e) {
+			try {
+				getRes().setHeader('Cache-Control', 'no-cache')
+				console.log(getReq().method, getReq().url)
+				await next()
+			} catch (e) {
 				console.error(e)
-				setHtml('internal server error (code: internal)', {status: 500})
+				setHtml('internal server error', {status: 500})
 			}
 		},
 		router.get({
 			'/'() {setHtml('hello world')},
 			'/health'() {setText('ok')}
 		}),
-		() => {setHtml('not found', {status: 404})},
+		() => setHtml('not found', {status: 404}),
+	)()
+).listen(3000, () => console.log('server is listening at 3000'))
+```
+
+File server:
+
+```javascript
+import {Server} from 'node:http'
+import chain from 'jchain'
+import dxServer, {chainStatic, getReq, getRes, setHtml} from 'dx-server'
+import {resolve, dirname} from 'node:path'
+import {fileURLToPath} from 'node:url'
+
+new Server().on('request', (req, res) => chain(
+		dxServer(req, res),
+		async next => {
+			try {
+				getRes().setHeader('Cache-Control', 'no-cache')
+				console.log(getReq().method, getReq().url)
+				await next()
+			} catch (e) {
+				console.error(e)
+				setHtml('internal server error', {status: 500})
+			}
+		},
+		chainStatic('/', {root: resolve(dirname(fileURLToPath(import.meta.url)), 'public')}),
+		() => setHtml('not found', {status: 404}),
 	)()
 ).listen(3000, () => console.log('server is listening at 3000'))
 ```
@@ -49,8 +75,8 @@ import chain from 'jchain'
 import dxServer, {
 	getReq, getRes,
 	getJson, getRaw, getText, getUrlEncoded, getQuery,
-	setHtml, setJson, setText, setBuffer, setRedirect, setNodeStream, setWebStream,
-	router, connectMiddlewares
+	setHtml, setJson, setText, setBuffer, setRedirect, setNodeStream, setWebStream, setFile,
+	router, connectMiddlewares, chainStatic
 } from 'dx-server'
 import {expressApp} from 'dx-server/express'
 import express from 'express'
@@ -162,10 +188,6 @@ const tcpServer = new Server()
 await promisify(tcpServer.listen.bind(tcpServer))(3000)
 console.log('server is listening at 3000')
 ```
-
-## TODO
-Until these middlewares are available as native dx-server middlewares, express middlewares can be used with `expressApp()`
-- [ ] native static file serve, like 'static-serve'
 
 ## Note:
 

@@ -3,6 +3,9 @@ import {Readable} from 'node:stream'
 import makeDefer from 'jdefer'
 import {promisify} from 'node:util'
 import {entityTag, isFreshETag} from './etag.js'
+import {SendOptions} from 'send'
+import {sendFile} from './staticHelpers.js'
+import {getRes} from './dx.js'
 
 export type DxContext = {
 	charset?: BufferEncoding // not for redirect
@@ -12,33 +15,44 @@ export type DxContext = {
 	| {
 	type: 'text'
 	data: string
+	options: undefined
 }
 	| {
 	type: 'html'
 	data: string
+	options: undefined
 }
 	| {
 	type: 'buffer'
 	data: Buffer
+	options: undefined
 }
 	| {
 	type: 'json'
 	data: any
+	options: undefined
 }
 	| {
 	type: 'redirect'
 	data: string
+	options: undefined
 }
 	| {
 	type: 'nodeStream'
 	data: Readable
+	options: undefined
 }
 	| {
 	type: 'webStream'
 	data: ReadableStream
+	options: undefined
+} | {
+	type: 'file'
+	data: string
+	options?: SendOptions
 })
 
-export async function writeRes(req: IncomingMessage, res: ServerResponse, {type, data, charset, jsonBeautify, disableEtag}: DxContext) {
+export async function writeRes(req: IncomingMessage, res: ServerResponse, {type, data, charset, jsonBeautify, disableEtag, options}: DxContext) {
 	const setContentType = (contentType: string) => {
 		if (res.headersSent || res.getHeader('content-type')) return
 		res.setHeader('content-type', `${contentType}${charset ? `; charset=${charset}` : ''}`)
@@ -73,6 +87,14 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 			res.setHeader('location', data)
 			bufferOrStream = Buffer.from('', charset)
 			break
+		case 'file':
+			return sendFile(
+				req,
+				getRes(),
+				encodeURI(data),
+				options,
+				() => void 0,
+			)
 		case undefined:
 			// skip response. Some middleware may handle it outside the chain. For example, express middleware
 			return
@@ -82,6 +104,7 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 	}
 
 	if (res.headersSent) {
+		// for example, chainStatic or setFile send the response directly
 		if (res.writableFinished) {
 			// skipped: response is already finished
 		} else if (res.writableEnded) {

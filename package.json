@@ -1,6 +1,6 @@
 {
   "name": "dx-server",
-  "version": "0.5.2",
+  "version": "0.5.4",
   "main": "./cjs/index.js",
   "homepage": "https://github.com/tranvansang/dx-server",
   "repository": "https://github.com/tranvansang/dx-server",
@@ -32,11 +32,13 @@
     "@types/node": "^20.12.7",
     "@types/path-to-regexp": "^1.7.0",
     "@types/qs": "^6.9.15",
+    "@types/send": "^0.17.4",
     "typescript": "^5.4.5"
   },
   "dependencies": {
     "jdefer": "^0.0.14",
     "path-to-regexp": "^6.2.2",
-    "qs": "^6.12.1"
+    "qs": "^6.12.1",
+    "send": "^0.18.0"
   }
 }

@@ -7,7 +7,8 @@ export {
 	setJson,
 	setBuffer,
 	setRedirect,
-	setText
+	setText,
+	setFile,
 } from './dx.js'
 import {dxServer} from './dx.js'
 export {
@@ -19,5 +20,6 @@ export {
 } from './body.js'
 export {router} from './route.js'
 export {connectMiddlewares} from './connect.js'
+export {chainStatic} from './static.js'
 
 export default dxServer

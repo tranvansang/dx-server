@@ -2,6 +2,7 @@ import {Readable} from 'node:stream'
 import type {IncomingMessage, ServerResponse} from 'node:http'
 import {AsyncLocalStorage} from 'node:async_hooks'
 import {type DxContext, writeRes} from './dxHelpers.js'
+import {SendOptions} from 'send'
 
 export interface Chainable<
 	P extends any[] = any[],
@@ -63,6 +64,13 @@ export function setHtml(html: string, opts: { status?: number } = {}) {
 	dx.type = 'html'
 }
 
+export function setFile(filePath: string, options?: SendOptions) {
+	const dx = dxStorage.getStore()!
+	dx.data = filePath
+	dx.type = 'file'
+	dx.options = options
+}
+
 export function setBuffer(buffer: Buffer, {status}: { status?: number } = {}) {
 	const res = getRes()
 	const dx = dxStorage.getStore()!
@@ -103,3 +111,5 @@ export function setRedirect(url: string, status: 301 | 302) {
 	dx.data = url
 	dx.type = 'redirect'
 }
+
+// todo setDownload

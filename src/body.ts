@@ -38,3 +38,5 @@ const querySymbol = Symbol('query')
 export async function getQuery({simplify, ...options}: Partial<BufferBodyOptions> & {simplify?: boolean} = {}) {
 	return getReq()[querySymbol] ??= queryFromReq(getReq(), options)
 }
+
+// todo getFile

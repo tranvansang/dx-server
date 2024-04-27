@@ -98,7 +98,7 @@ export function urlFromReq(req: IncomingMessage) {
 	return new URL(req.url ?? '', 'https://example.com')
 }
 
-export async function queryFromReq(req: IncomingMessage, options?: Partial<BufferBodyOptions>) {
+export function queryFromReq(req: IncomingMessage, options?: Partial<BufferBodyOptions>) {
 	const query = urlFromReq(req).searchParams.toString()
 	const {simplifyQuery} = {...bodyDefaultOptions, ...options}
 	return simplifyQuery ? Object.fromEntries(new URLSearchParams(query)) : qs.parse(query)

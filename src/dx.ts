@@ -123,3 +123,42 @@ export function setRedirect(url: string, status: 301 | 302) {
 // https://github.com/jshttp/content-disposition/blob/1037e24e4790273da96645ad250061f39e77968c/index.js#L186
 // because in most applications, users can specify a simple filename which usually doesn't need to be validated.
 // we leave setDownload() implementation for users, for now.
+
+interface Context<
+	T,
+	Params extends any[],
+	R = any,
+	Next = (...np: any[]) => any,
+> {
+	value: T // can be undefined
+	chain(...params: Params): Chainable<Params, R, Next>
+	(...params: Params): Promise<T>
+}
+export function makeDxContext<
+	T,
+	Params extends any[],
+	R = any,
+	Next = (...np: any[]) => any,
+>(maker: (...params: Params) => T): Context<T, Params, R, Next> {
+	const promiseSymbol = Symbol('promise')
+	const valueSymbol = Symbol('value')
+	// wrap in an async function to ensure the maker is called only once
+	const context: Context<T, Params, R, Next> = (...params: Params) => getReq()[promiseSymbol] ??= (async () => {
+		try {
+			return getReq()[valueSymbol] = await maker(...params)
+		} catch (e) {
+			throw e
+		}
+	})()
+	Object.defineProperty(context, 'value', {
+		get() {
+			if (!getReq()[promiseSymbol]) throw new Error('value is not ready')
+			return getReq()[valueSymbol]
+		}
+	})
+	context.chain = (...params) => async next => {
+		await context(...params)
+		return next()
+	}
+	return context
+}

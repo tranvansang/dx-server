@@ -9,9 +9,11 @@ export {
 	setRedirect,
 	setText,
 	setFile,
+	makeDxContext,
 } from './dx.js'
 import {dxServer} from './dx.js'
 export {
+	getBuffer,
 	getJson,
 	getRaw,
 	getText,

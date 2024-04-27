@@ -74,14 +74,13 @@ import {promisify} from 'node:util'
 import chain from 'jchain'
 import dxServer, {
 	getReq, getRes,
-	getJson, getRaw, getText, getUrlEncoded, getQuery,
+	getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery,
 	setHtml, setJson, setText, setBuffer, setRedirect, setNodeStream, setWebStream, setFile,
-	router, connectMiddlewares, chainStatic
+	router, connectMiddlewares, chainStatic, makeDxContext
 } from 'dx-server'
 import {expressApp} from 'dx-server/express'
 import express from 'express'
 import morgan from 'morgan'
-import {AsyncLocalStorage} from 'node:async_hooks'
 
 // it is best practice to create custom error class for non-system error
 class ServerError extends Error {
@@ -94,14 +93,12 @@ class ServerError extends Error {
 	}
 }
 
-const authStorage = new AsyncLocalStorage()
-const authChain = async next => {
-	const auth = getReq().headers.authorization ? {id: 1, name: 'joe'} : undefined
-	return authStorage.run(auth, next)
-}
+const authContext = makeDxContext(async () => {
+	if (getReq().headers.authorization) return {id: 1, name: 'joe (private)'}
+})
 
 const requireAuth = () => {
-	if (!authStorage.getStore()) throw new ServerError('unauthorized', 401, 'unauthorized')
+	if (!authContext.value) throw new ServerError('unauthorized', 401, 'unauthorized')
 }
 
 const serverChain = chain(
@@ -131,7 +128,7 @@ const serverChain = chain(
 		if (process.env.NODE_ENV !== 'production') app.set('json spaces', 2)
 		app.use('/public', express.static('public'))
 	}),
-	authChain,
+	authContext.chain(), // chain context will set the context value to authContext.value in every request
 	router.post({// example of catching error for all /api/* routes
 		async '/api'({next}) {
 			try {
@@ -157,7 +154,7 @@ const serverChain = chain(
 		},
 		'/api/me'() { // sample private router
 			requireAuth()
-			setJson({name: authStorage.getStore().name})
+			setJson({name: authContext.value.name})
 		},
 	}),
 	router.get({ // sample GET router
@@ -182,6 +179,7 @@ const tcpServer = new Server()
 			)()
 		} catch (e) {
 			console.error(e)
+			res.end()
 		}
 	})
 
@@ -194,17 +192,94 @@ console.log('server is listening at 3000')
 `getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery` are all synchronous functions.
 The associated results are calculated in the first time they are called and cached for subsequent calls.
 
-If you want to get these values synchronously, you can do as follows:
+If you want to get these values synchronously, chain it, like follows:
 ```javascript
-import {AsyncLocalStorage} from 'node:async_hooks'
 import {getJson} from 'dx-server'
-const jsonStorage = new AsyncLocalStorage()
 
 chain(
-	async next => jsonStorage.run(await getJson(), next),
+	getJson.chain(/*option*/), // json body is parsed and stored in context in every request
 	next => {
-		console.log(jsonContext.value) // json body can be accessed synchronously
+		console.log(getJson.value) // json body can be accessed synchronously
 		return next()
 	}
+)
+```
+
+Context can be created using `makeDxContext` function:
+
+```javascript
+import {makeDxContext} from 'dx-server'
+
+const authContext = makeDxContext(() => {
+	if (getReq().headers.authorization) return {id: 1, name: 'joe (authorized)'}
+})
+const requireAuth = () => {
+	if (!authContext.value) throw new Error('unauthorized')
+}
+chain(
+	authContext.chain(),
+	next => {
+		requireAuth()
+		return next()
+	}
+)
+// or await authContext() to lazy load the context and don't require chaining authContext.chain()
+chain(
+	async next => {
+		console.log(await authContext())
+		return next()
+	}
+)
+```
+
+# API References
+All exported APIs:
+```javascript
+import dxServer, {
+	getReq, getRes, getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery,
+	setHtml, setJson, setText, setBuffer, setRedirect, setNodeStream, setWebStream, setFile,
+	router, connectMiddlewares, chainStatic, makeDxContext
+} from 'dx-server'
+import {expressApp, expressRouter} from 'dx-server/express' // requires express installed
+import {
+	setBufferBodyDefaultOptions,
+	bufferFromReq, jsonFromReq, rawFromReq, textFromReq, urlEncodedFromReq, queryFromReq,
+} from 'dx-server/helpers'
+```
+
+- `getReq()`, `getRes()`: get request and response objects from anywhere.
+
+- `getBuffer()`, `getJson()`, `getRaw()`, `getText()`, `getUrlEncoded()`, `getQuery()`: get parsed request body, raw body, text body, url encoded body, query string from anywhere.
+These are DX context object, can be used as follows:
+	- `const json = await getJson()`: lazily load the context, once loaded, it is cached for subsequent calls.
+  - Chain it to get the value synchronously: `chain(getJson.chain(), next => console.log(getJson.value))`. Note that the value is calculated in every request.
+- `makeDxContext(fn)`: create a DX context object.
+
+- `setHtml`, `setJson`, `setText`, `setBuffer`, `setRedirect`, `setNodeStream`, `setWebStream`, `setFile`: set response body.
+
+- `router.get`, `router.post`, `router.put`, `router.delete`, `router.patch`, `router.head`, `router.options`, `router.connect`, `router.trace`: create router.
+- `router.method(methods, routes, options)`: create router with custom methods.
+- `router.all(routes, options)`: create router for all methods.
+
+- `connectMiddlewares(...middlewares)`: connect middlewares. For example:
+```javascript
+import {connectMiddlewares} from 'dx-server'
+import morgan from 'morgan'
+import cors from 'cors'
+
+connectMiddlewares(
+	morgan('common'),
+	cors(),
+)
+```
+
+- `chainStatic(path, options)`: serve static files. For example:
+```javascript
+import {chainStatic} from 'dx-server'
+import {resolve, dirname} from 'node:path'
+import {fileURLToPath} from 'node:url'
+
+chain(
+	chainStatic('/assets', {root: resolve(dirname(fileURLToPath(import.meta.url)), 'public')})
 )
 ```

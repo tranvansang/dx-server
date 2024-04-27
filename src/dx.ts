@@ -130,7 +130,7 @@ interface Context<
 	R = any,
 	Next = (...np: any[]) => any,
 > {
-	value: T // can be undefined
+	value: Awaited<T> // can be undefined
 	chain(...params: Params): Chainable<Params, R, Next>
 	(...params: Params): Promise<T>
 }

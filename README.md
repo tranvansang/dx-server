@@ -50,7 +50,7 @@ import dxServer, {
 	getReq, getRes,
 	getJson, getRaw, getText, getUrlEncoded, getQuery,
 	setHtml, setJson, setText, setBuffer, setRedirect, setNodeStream, setWebStream,
-	router,
+	router, connectMiddlewares
 } from 'dx-server'
 import {expressApp} from 'dx-server/express'
 import express from 'express'
@@ -96,10 +96,13 @@ const serverChain = chain(
 			}
 		}
 	},
+	connectMiddlewares(
+		morgan('common'),
+		// cors(),
+	),
 	await expressApp(app => {// any express feature can be used. This requires express installed, with for e.g., `yarn add express`
 		app.set('trust proxy', true)
 		if (process.env.NODE_ENV !== 'production') app.set('json spaces', 2)
-		app.use(morgan('common')) // in future, we will provide native implementation of express middlewares
 		app.use('/public', express.static('public'))
 	}),
 	authChain,
@@ -163,8 +166,6 @@ console.log('server is listening at 3000')
 ## TODO
 Until these middlewares are available as native dx-server middlewares, express middlewares can be used with `expressApp()`
 - [ ] native static file serve, like 'static-serve'
-- [ ] logger like morgan
-- [ ] cors
 
 ## Note:
 

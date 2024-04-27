@@ -2,7 +2,7 @@ import express, {type Express, type Request, type Response, type Router} from 'e
 import makeDefer from 'jdefer'
 import {getReq, getRes} from './dx.js'
 
-export const expressApp = async (setup: (app: Express) => any) => {
+export async function expressApp(setup: (app: Express) => any) {
 	const symbol = Symbol('expressApp')
 
 	const app = express()
@@ -18,7 +18,8 @@ export const expressApp = async (setup: (app: Express) => any) => {
 	}
 }
 
-export const expressRouter = async (setup: (router: Router) => any) => {
+// can be used to chain existing Express app
+export async function expressRouter(setup: (router: Router) => any) {
 	const symbol = Symbol('expressRouter')
 
 	const router = express.Router()
@@ -33,7 +34,3 @@ export const expressRouter = async (setup: (router: Router) => any) => {
 		await next()
 	}
 }
-
-export const expressMiddlewares = (
-	...middlewares: Array<(req: Request, res: Response, next: () => any) => any>
-) => expressRouter(router => router.use(...middlewares))

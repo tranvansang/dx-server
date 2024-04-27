@@ -18,5 +18,6 @@ export {
 	getQuery,
 } from './body.js'
 export {router} from './route.js'
+export {connectMiddlewares} from './connect.js'
 
 export default dxServer

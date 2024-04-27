@@ -3,7 +3,7 @@ import type {IncomingMessage, ServerResponse} from 'node:http'
 import {AsyncLocalStorage} from 'node:async_hooks'
 import {type DxContext, writeRes} from './dxHelpers.js'
 
-interface Chainable<
+export interface Chainable<
 	P extends any[] = any[],
 	R = any,
 	Next = (...np: any[]) => any,

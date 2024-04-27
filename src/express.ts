@@ -1,4 +1,4 @@
-import express, {type Express, type Request, type Response, type Router} from 'express'
+import express, {type Express, type Router} from 'express'
 import makeDefer from 'jdefer'
 import {getReq, getRes} from './dx.js'
 

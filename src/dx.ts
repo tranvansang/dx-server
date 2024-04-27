@@ -48,8 +48,6 @@ export function getRes(): ServerResponse {
 	return resStorage.getStore()!
 }
 
-// todo: support setFile (with stream or with buffer)
-
 export function setText(text: string, {status}: { status?: number } = {}) {
 	const res = getRes()
 	const dx = dxStorage.getStore()!
@@ -112,4 +110,16 @@ export function setRedirect(url: string, status: 301 | 302) {
 	dx.type = 'redirect'
 }
 
-// todo setDownload
+// for download, set content-disposition header
+// res.setHeader('Content-disposition', 'attachment; filename=my-movie.MOV')
+
+// res.setHeader('Content-type', 'video/quicktime')
+// fileStream.pipe(res)
+// or
+// send(req, filePath, options).pipe(res) // which will set content-type, content-length, and other cache related headers like staticHelpers.sendFile
+
+// implementing this require a strict validation for the type (attachment) and filename.
+// For example: express relies on this
+// https://github.com/jshttp/content-disposition/blob/1037e24e4790273da96645ad250061f39e77968c/index.js#L186
+// because in most applications, users can specify a simple filename which usually doesn't need to be validated.
+// we leave setDownload() implementation for users, for now.

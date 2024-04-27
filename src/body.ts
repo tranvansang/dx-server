@@ -39,4 +39,5 @@ export async function getQuery({simplify, ...options}: Partial<BufferBodyOptions
 	return getReq()[querySymbol] ??= queryFromReq(getReq(), options)
 }
 
-// todo getFile
+// to getFile use busboy
+// https://github.com/mscdex/busboy

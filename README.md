@@ -189,7 +189,7 @@ console.log('server is listening at 3000')
 
 ## Note:
 
-`getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery` are all synchronous functions.
+`getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery` are all asynchronous functions.
 The associated results are calculated in the first time they are called and cached for subsequent calls.
 
 If you want to get these values synchronously, chain it, like follows:
@@ -252,6 +252,7 @@ import {
 - `getBuffer()`, `getJson()`, `getRaw()`, `getText()`, `getUrlEncoded()`, `getQuery()`: get parsed request body, raw body, text body, url encoded body, query string from anywhere.
 These are DX context object, can be used as follows:
 	- `const json = await getJson()`: lazily load the context, once loaded, it is cached for subsequent calls.
+No chaining is required.
   - Chain it to get the value synchronously: `chain(getJson.chain(), next => console.log(getJson.value))`. Note that the value is calculated in every request.
 - `makeDxContext(fn)`: create a DX context object.
 

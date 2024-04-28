@@ -42,22 +42,12 @@ File server:
 ```javascript
 import {Server} from 'node:http'
 import chain from 'jchain'
-import dxServer, {chainStatic, getReq, getRes, setHtml} from 'dx-server'
+import dxServer, {chainStatic, setHtml} from 'dx-server'
 import {resolve, dirname} from 'node:path'
 import {fileURLToPath} from 'node:url'
 
 new Server().on('request', (req, res) => chain(
 		dxServer(req, res),
-		async next => {
-			try {
-				getRes().setHeader('Cache-Control', 'no-cache')
-				console.log(getReq().method, getReq().url)
-				await next()
-			} catch (e) {
-				console.error(e)
-				setHtml('internal server error', {status: 500})
-			}
-		},
 		chainStatic('/', {root: resolve(dirname(fileURLToPath(import.meta.url)), 'public')}),
 		() => setHtml('not found', {status: 404}),
 	)()
@@ -158,12 +148,8 @@ const serverChain = chain(
 		},
 	}),
 	router.get({ // sample GET router
-		'/'() {
-			setHtml('ok')
-		},
-		'/health'() {
-			setHtml('ok')
-		}
+		'/'() {setHtml('ok')},
+		'/health'() {setHtml('ok')}
 	}),
 	() => { // not found router
 		throw new ServerError('not found', 404, 'not_found')

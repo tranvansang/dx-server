@@ -65,23 +65,25 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 		case 'html':
 			setContentType('text/html')
 			// shared with text
-			bufferOrStream = Buffer.from(data, charset)
+			bufferOrStream = Buffer.from(data ?? '', charset)
 			break
 		case 'buffer':
 			setContentType('application/octet-stream')
-			bufferOrStream = data
+			bufferOrStream = data ?? Buffer.from('', charset)
 			break
 		case 'nodeStream':
 			setContentType('application/octet-stream')
-			bufferOrStream = data
+			bufferOrStream = data ?? Buffer.from('', charset)
 			break
 		case 'webStream':
 			setContentType('application/octet-stream')
-			bufferOrStream = Readable.fromWeb(data as import('node:stream/web').ReadableStream)
+			bufferOrStream = Readable.fromWeb(data  as import('node:stream/web').ReadableStream ?? new ReadableStream())
 			break
 		case 'json':
 			setContentType('application/json')
-			bufferOrStream = Buffer.from(jsonBeautify ? JSON.stringify(data, null, 2) : JSON.stringify(data), charset)
+			bufferOrStream = data === undefined
+				? Buffer.from('', charset)
+				: Buffer.from(jsonBeautify ? JSON.stringify(data, null, 2) : JSON.stringify(data), charset)
 			break
 		case 'redirect':
 			res.setHeader('location', data)

@@ -284,3 +284,8 @@ chain(
 	chainStatic('/assets', {root: resolve(dirname(fileURLToPath(import.meta.url)), 'public')})
 )
 ```
+
+## Other functionalities
+- Download file: set the [Content-Disposition](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition) header.
+- Upload file: recommend [busboy](https://www.npmjs.com/package/busboy) package.
+- Cookie: recommend [cookie](https://www.npmjs.com/package/cookie) package.

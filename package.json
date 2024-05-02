@@ -1,6 +1,6 @@
 {
   "name": "dx-server",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "main": "./cjs/index.js",
   "homepage": "https://github.com/tranvansang/dx-server",
   "repository": "https://github.com/tranvansang/dx-server",

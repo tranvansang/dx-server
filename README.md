@@ -119,22 +119,20 @@ const serverChain = chain(
 		app.use('/public', express.static('public'))
 	}),
 	authContext.chain(), // chain context will set the context value to authContext.value in every request
-	router.post({// example of catching error for all /api/* routes
-		async '/api'({next}) {
-			try {
-				await next()
-			} catch (e) {
-				if (e instanceof ServerError) setJson({// only app error message should be shown to user
-					error: e.message,
-					code: e.code,
-				}, {status: e.status})
-				else {// report system error
-					console.error(e)
-					setJson({
-						message: 'internal server error',
-						code: 'internal'
-					}, {status: 500})
-				}
+	router.post('/api', async ({next}) => {// example of catching error for all /api/* routes
+		try {
+			await next()
+		} catch (e) {
+			if (e instanceof ServerError) setJson({// only app error message should be shown to user
+				error: e.message,
+				code: e.code,
+			}, {status: e.status})
+			else {// report system error
+				console.error(e)
+				setJson({
+					message: 'internal server error',
+					code: 'internal'
+				}, {status: 500})
 			}
 		}
 	}, {end: false}), // note: {end: false} is required to match all /api/* routes. This option is passed directly to path-to-regexp

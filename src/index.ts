@@ -20,7 +20,7 @@ export {
 	getUrlEncoded,
 	getQuery,
 } from './body.js'
-export {router} from './route.js'
+export {router} from './router.js'
 export {connectMiddlewares} from './connect.js'
 export {chainStatic} from './static.js'
 

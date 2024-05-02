@@ -19,20 +19,20 @@ interface RegexpToPathOptions {
 	prefixes?: string // default `./`. List of characters to automatically consider prefixes when parsing.
 }
 
-function compilePath(path: string, options: RegexpToPathOptions) {
+function compilePath(pattern: string, options: RegexpToPathOptions) {
 	const cacheKey = JSON.stringify(options)
 	const pathCache = cache[cacheKey] || (cache[cacheKey] = {})
-	if (pathCache[path]) return pathCache[path]
+	if (pathCache[pattern]) return pathCache[pattern]
 
 	const keys: Key[] = []
-	const regexp = pathToRegexp(path, keys, options)
+	const regexp = pathToRegexp(pattern, keys, options)
 	const result = {
 		regexp,
 		keys
 	}
 
 	if (cacheCount < cacheLimit) {
-		pathCache[path] = result
+		pathCache[pattern] = result
 		cacheCount++
 	}
 	return result
@@ -68,12 +68,11 @@ export function matchPattern<Params extends Record<Key['name'], string>>(
 
 interface RouteContext {
 	matched: string
-	next(): any
 	params: Record<Key['name'], string>
+	next(): any
 }
-interface RouteDefinition {
-	[k: string]: (p: RouteContext) => any
-}
+interface Route {(context: RouteContext): any}
+interface Routes {[k: string]: Route}
 
 interface RouterOptions extends RegexpToPathOptions {
 	prefix?: string
@@ -84,39 +83,43 @@ const allMethods = [
 	'get', 'head', 'post', 'put', 'delete', 'connect', 'options', 'trace', 'patch'
 ] as const
 type IRouter = {
-	[K in typeof allMethods[number]]: (definition: RouteDefinition, options?: RouterOptions) => Chainable
+	[K in typeof allMethods[number]]: ((routes: Routes, options?: RouterOptions) => Chainable)
+	| ((pattern: string, route: Route, options?: RouterOptions) => Chainable)
 } & {
-	all(definition: RouteDefinition, options?: RouterOptions): Chainable
-	method(method: string, definition: RouteDefinition, options?: RouterOptions): Chainable
+	all: ((routes: Routes, options?: RouterOptions) => Chainable)
+	| ((pattern: string, route: Route, options?: RouterOptions) => Chainable)
+	method: ((method: string, routes: Routes, options?: RouterOptions) => Chainable)
+	| ((method: string, pattern: string, route: Route, options?: RouterOptions) => Chainable)
 }
 
+function makeRouter(
+	method: string | undefined, // undefined means any method
+	routes: [pattern: string, route: Route][],
+	{prefix = '', ...options}: RouterOptions = {},
+): Chainable {
+	return next => {
+		const req = getReq()
+		if (method !== undefined && req.method !== method.toUpperCase()) return next()
+		for (const [pattern, handler] of routes) {
+			const match = matchPattern(urlFromReq(req).pathname, `${prefix}${pattern}`, options)
+			if (match) return handler({
+				...match,
+				next,
+			})
+		}
+		return next()
+	}
+}
 export const router: IRouter = {
-	method(method, router, {prefix = '', ...options}: RouterOptions = {}) {
-		return next => {
-			const req = getReq()
-			if (req.method !== method.toUpperCase()) return next()
-			for (const [pattern, handler] of Object.entries(router)) {
-				const match = matchPattern(urlFromReq(req).pathname, `${prefix}${pattern}`, options)
-				if (match) return handler({
-					...match,
-					next,
-				})
-			}
-			return next()
-		}
+	method(method, ...params) {
+		return typeof params[0] === 'string'
+			? makeRouter(method, [[params[0], params[1]]], params[2])
+			: makeRouter(method, Object.entries(params[0]), params[1])
 	},
-	all(router, {prefix = '', ...options}: RouterOptions = {}) {
-		return next => {
-			const req = getReq()
-			for (const [pattern, handler] of Object.entries(router)) {
-				const match = matchPattern(urlFromReq(req).pathname, `${prefix}${pattern}`, options)
-				if (match) return handler({
-					...match,
-					next,
-				})
-			}
-			return next()
-		}
+	all(...params) {
+		return typeof params[0] === 'string'
+			? makeRouter(undefined, [[params[0], params[1]]], params[2])
+			: makeRouter(undefined, Object.entries(params[0]), params[1])
 	}
 }
 

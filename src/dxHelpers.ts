@@ -85,7 +85,7 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 				? Buffer.from('', charset)
 				: Buffer.from(jsonBeautify ? JSON.stringify(data, null, 2) : JSON.stringify(data), charset)
 			break
-		case 'redirect':
+		case 'redirect': // https://stackoverflow.com/a/8059718/1398479
 			res.setHeader('location', data)
 			bufferOrStream = Buffer.from('', charset)
 			break

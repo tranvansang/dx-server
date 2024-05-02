@@ -147,10 +147,8 @@ const serverChain = chain(
 			setJson({name: authContext.value.name})
 		},
 	}),
-	router.get({ // sample GET router
-		'/'() {setHtml('ok')},
-		'/health'() {setHtml('ok')}
-	}),
+	router.get('/', () => setHtml('ok')), // router.method() accepts 2 formats
+	router.get('/health', () => setText('ok')),
 	() => { // not found router
 		throw new ServerError('not found', 404, 'not_found')
 	},
@@ -233,6 +231,15 @@ import {
 } from 'dx-server/helpers'
 ```
 
+## Basic
+```javascript
+import dxServer, {
+	getReq, getRes, getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery,
+	setHtml, setJson, setText, setBuffer, setRedirect, setNodeStream, setWebStream, setFile,
+	makeDxContext
+} from 'dx-server'
+```
+
 - `getReq()`, `getRes()`: get request and response objects from anywhere.
 
 - `getBuffer()`, `getJson()`, `getRaw()`, `getText()`, `getUrlEncoded()`, `getQuery()`: get parsed request body, raw body, text body, url encoded body, query string from anywhere.
@@ -243,10 +250,6 @@ No chaining is required.
 - `makeDxContext(fn)`: create a DX context object.
 
 - `setHtml`, `setJson`, `setText`, `setBuffer`, `setRedirect`, `setNodeStream`, `setWebStream`, `setFile`: set response body.
-
-- `router.get`, `router.post`, `router.put`, `router.delete`, `router.patch`, `router.head`, `router.options`, `router.connect`, `router.trace`: create router.
-- `router.method(methods, routes, options)`: create router with custom methods.
-- `router.all(routes, options)`: create router for all methods.
 
 - `connectMiddlewares(...middlewares)`: connect middlewares. For example:
 ```javascript
@@ -268,6 +271,78 @@ import {fileURLToPath} from 'node:url'
 
 chain(
 	chainStatic('/assets', {root: resolve(dirname(fileURLToPath(import.meta.url)), 'public')})
+)
+```
+
+## Routing
+```javascript
+import {router} from 'dx-server'
+```
+
+- `router.get`, `router.post`, `router.put`, `router.delete`, `router.patch`, `router.head`, `router.options`, `router.connect`, `router.trace`: create router.
+	These functions accept 2 formats:
+	- `router.get(routes: {[pattern: string]: Route}, options: RouterOptions)`: create multiple routes.
+	- `router.get(pattern: string, handler: Route, options: RouterOptions)`: create route for GET method.
+
+- `router.all(...)`: same as `router.get()` but for any method.
+- `router.method()`: create router with custom method. Similar to `router.get()`, this function accepts 2 formats.
+	- `router.method(method: string, routes: {[pattern: string]: Route}, options: RouterOptions)`: create multiple routes.
+	- `router.method(method: string, pattern: string, handler: Route, options: RouterOptions)`: create route for `method` method.
+
+`RouterOptions` is defined as follows:
+```typescript
+interface RegexpToPathOptions {
+	end?: boolean // default true. match till end of string
+	strict?: boolean // default false. disallow trailing delimiter
+	sensitive?: boolean // default false
+	start?: boolean // default true. match from beginning of string
+
+	delimiter?: string // default '/#?'. delimiter for segments
+	endsWith?: string // default undefined. optional character that matches at the end of the string
+	encode?(value: string): string // default x => x. encode strings before inserting into RegExp
+	prefixes?: string // default `./`. List of characters to automatically consider prefixes when parsing.
+}
+interface RouterOptions extends RegexpToPathOptions {
+	prefix?: string
+}
+```
+`options: RegexpToPathOptions` (except `prefix` key) is directly passed to [path-to-regexp](https://www.npmjs.com/package/path-to-regexp) package.
+
+`Route` is defined as follows:
+```typescript
+interface RouteContext {
+	matched: string
+	params: Record<string, string>
+	next(): any
+}
+type Route = (context: RouteContext) => any
+```
+
+## Helpers
+```javascript
+import {
+	setBufferBodyDefaultOptions,
+	bufferFromReq, jsonFromReq, rawFromReq, textFromReq, urlEncodedFromReq, queryFromReq,
+} from 'dx-server/helpers'
+```
+
+Helpers are all pure functions, and do not rely on any context.
+These functions are independent of the context and can be used anywhere, even outside of this package.
+They require request and response objects to be passed.
+
+## ExpressJS
+```javascript
+import {expressApp, expressRouter} from 'dx-server/express' // requires express installed
+
+chain(
+	await expressApp(app => {// any express feature can be used. This requires express installed, with for e.g., `yarn add express`
+		app.set('trust proxy', true)
+		if (process.env.NODE_ENV !== 'production') app.set('json spaces', 2)
+		app.use('/public', express.static('public'))
+	}),
+	expressRouter(router => {
+		router.use(cors())
+	}),
 )
 ```
 

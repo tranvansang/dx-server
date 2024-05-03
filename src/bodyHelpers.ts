@@ -1,12 +1,15 @@
 import {IncomingMessage} from 'node:http'
 import {getContentStream, readStream} from './stream.js'
 import {parseContentType} from './contentType.js'
-import qs from 'qs'
 
 export interface BufferBodyOptions {
 	bodyLimit: number
-	simplifyUrlEncodedBody?: boolean
-	simplifyQuery?: boolean
+	urlEncodedParser?(search: string): any
+	queryParser?(search: string): any
+}
+
+function defaultQueryParser(search: string) {
+	return Object.fromEntries(new URLSearchParams(search))
 }
 
 let bodyDefaultOptions: BufferBodyOptions = {bodyLimit: 100 << 10} // 100kb
@@ -88,9 +91,7 @@ export async function urlEncodedFromReq(req: IncomingMessage, options?: Partial<
 	if (!charset) return
 	const buffer = await bufferFromReq(req, options)
 	if (buffer) {
-		const str = buffer.toString(charset)
-		const {simplifyUrlEncodedBody} = {...bodyDefaultOptions, ...options}
-		return simplifyUrlEncodedBody ? Object.fromEntries(new URLSearchParams(str)) : qs.parse(str)
+		return (bodyDefaultOptions.urlEncodedParser ?? options?.urlEncodedParser ?? defaultQueryParser)(buffer.toString(charset))
 	}
 }
 
@@ -99,7 +100,5 @@ export function urlFromReq(req: IncomingMessage) {
 }
 
 export function queryFromReq(req: IncomingMessage, options?: Partial<BufferBodyOptions>) {
-	const query = urlFromReq(req).searchParams.toString()
-	const {simplifyQuery} = {...bodyDefaultOptions, ...options}
-	return simplifyQuery ? Object.fromEntries(new URLSearchParams(query)) : qs.parse(query)
+	return (bodyDefaultOptions.urlEncodedParser ?? options?.urlEncodedParser ?? defaultQueryParser)(urlFromReq(req).searchParams.toString())
 }

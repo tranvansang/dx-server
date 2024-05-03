@@ -119,7 +119,7 @@ const serverChain = chain(
 		app.use('/public', express.static('public'))
 	}),
 	authContext.chain(), // chain context will set the context value to authContext.value in every request
-	router.post('/api', async ({next}) => {// example of catching error for all /api/* routes
+	router.post('/api/*', async ({next}) => {// example of catching error for all /api/* routes
 		try {
 			await next()
 		} catch (e) {
@@ -135,7 +135,7 @@ const serverChain = chain(
 				}, {status: 500})
 			}
 		}
-	}, {end: false}), // note: {end: false} is required to match all /api/* routes. This option is passed directly to path-to-regexp
+	}),
 	router.post({
 		'/api/sample-public-api'() { // sample POST router
 			setJson({name: 'joe'})
@@ -289,27 +289,25 @@ import {router} from 'dx-server'
 
 `RouterOptions` is defined as follows:
 ```typescript
-interface RegexpToPathOptions {
-	end?: boolean // default true. match till end of string
-	strict?: boolean // default false. disallow trailing delimiter
-	sensitive?: boolean // default false
-	start?: boolean // default true. match from beginning of string
-
-	delimiter?: string // default '/#?'. delimiter for segments
-	endsWith?: string // default undefined. optional character that matches at the end of the string
-	encode?(value: string): string // default x => x. encode strings before inserting into RegExp
-	prefixes?: string // default `./`. List of characters to automatically consider prefixes when parsing.
-}
-interface RouterOptions extends RegexpToPathOptions {
+interface RouterOptions {
 	prefix?: string
+	sensitive?: string
 }
 ```
-`options: RegexpToPathOptions` (except `prefix` key) is directly passed to [path-to-regexp](https://www.npmjs.com/package/path-to-regexp) package.
+
+Patterns are matched using [URLPattern](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern).
+This does not always match the same as ExpressJS.
+For example, to match any path prefixed with `/api/`, use `/api/*`.
+Note the following:
+- `''` matches nothing.
+- `'/'` matches both https://example.com and https://example.com/.
+- `'/foo'` matches https://example.com/foo but not https://example.com/foo/.
+- `'/foo/'` matches https://example.com/foo/ but not https://example.com/foo.
 
 `Route` is defined as follows:
 ```typescript
 interface RouteContext {
-	matched: string
+	matched: URLPatternResult // result returned from URLPattern.exec()
 	params: Record<string, string>
 	next(): any
 }

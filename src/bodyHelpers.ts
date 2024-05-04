@@ -100,5 +100,5 @@ export function urlFromReq(req: IncomingMessage) {
 }
 
 export function queryFromReq(req: IncomingMessage, options?: Partial<BufferBodyOptions>) {
-	return (bodyDefaultOptions.urlEncodedParser ?? options?.urlEncodedParser ?? defaultQueryParser)(urlFromReq(req).searchParams.toString())
+	return (bodyDefaultOptions.queryParser ?? options?.queryParser ?? defaultQueryParser)(urlFromReq(req).searchParams.toString())
 }

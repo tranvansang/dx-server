@@ -124,7 +124,7 @@ export function setRedirect(url: string, status: 301 | 302) {
 // because in most applications, users can specify a simple filename which usually doesn't need to be validated.
 // we leave setDownload() implementation for users, for now.
 
-interface Context<
+export interface Context<
 	T,
 	Params extends any[],
 	R = any,

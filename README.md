@@ -291,7 +291,6 @@ import {router} from 'dx-server'
 ```typescript
 interface RouterOptions {
 	prefix?: string
-	sensitive?: string
 }
 ```
 

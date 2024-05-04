@@ -4,7 +4,7 @@ import 'urlpattern-polyfill'
 import {urlFromReq} from './bodyHelpers.js'
 
 interface URLPatternOptions {
-	sensitive?: boolean // default false
+	// sensitive?: boolean // default false
 	// strict?: boolean // default false. disallow trailing delimiter
 }
 
@@ -15,9 +15,9 @@ interface URLPatternOptions {
 function matchPattern<Params extends Record<string, string>>(
 	pathname: string,
 	pattern: string,
-	options?: URLPatternOptions,
+	// options?: URLPatternOptions,
 ) {
-	const matched = new URLPattern({pathname: pattern}, undefined, options).exec({pathname})
+	const matched = new URLPattern({pathname: pattern}).exec({pathname})
 	if (!matched) return
 
 	return {

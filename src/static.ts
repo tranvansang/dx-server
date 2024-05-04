@@ -7,7 +7,7 @@ export function chainStatic(
 	prefix: string,
 	options: SendOptions
 ): Chainable {
-	return next => {
+	return async next => {
 		const req = getReq()
 		if (req.method !== 'GET' && req.method !== 'HEAD') return next()
 
@@ -21,12 +21,18 @@ export function chainStatic(
 			&& pathname + '/' !== prefix
 		) return next()
 
-		return sendFile(
+		try {
+			await sendFile(
 			req,
 			getRes(),
 			pathname.slice(prefix.length - 1), // keep the trailing slash
 			options,
 			next,
 		)
+		} catch (err) {
+			return next(err)
+			// if (err.code === 'ENOENT') return next()
+			// throw err
+		}
 	}
 }

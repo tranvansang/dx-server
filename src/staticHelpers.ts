@@ -1,6 +1,6 @@
-import makeDefer from 'jdefer'
 import send, {SendOptions} from 'send'
 import {IncomingMessage, ServerResponse} from 'node:http'
+import './polyfillWithResolvers.js'
 
 export function sendFile(
 	req: IncomingMessage,
@@ -9,7 +9,7 @@ export function sendFile(
 	options: SendOptions | undefined,
 	next: () => any,
 	) {
-	const defer = makeDefer()
+	const defer = Promise.withResolvers()
 	send(req, pathname, options)
 		.on('error', async err => {
 			if (err.code !== 'ENOENT') defer.reject(err)

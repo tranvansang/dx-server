@@ -1,6 +1,6 @@
 import type {IncomingMessage, ServerResponse} from 'node:http'
 import {Chainable, getReq, getRes} from './dx.js'
-import makeDefer from 'jdefer'
+import './polyfillWithResolvers.js'
 
 // support async middleware
 // do not support error middleware (the one with 4 arguments)
@@ -10,7 +10,7 @@ export function connectMiddlewares(
 	return next => {
 		const req = getReq()
 		const res = getRes()
-		const defer = makeDefer()
+		const defer = Promise.withResolvers()
 		// because middleware usually not return next() or await to next(),
 		// the next passed to the middleware must be resilient to error (never throw or reject)
 		middlewares.reduceRight(

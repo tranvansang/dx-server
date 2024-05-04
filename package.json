@@ -34,7 +34,6 @@
     "typescript": "^5.4.5"
   },
   "dependencies": {
-    "jdefer": "^0.0.14",
     "send": "^0.18.0",
     "urlpattern-polyfill": "^10.0.0"
   }

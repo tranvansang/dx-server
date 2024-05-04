@@ -1,8 +1,8 @@
 // https://github.com/expressjs/body-parser/blob/2a2f47199b443c56b6ebb74cac7acdeb63fac61f/lib/read.js#L152
 import type {IncomingMessage} from 'node:http'
 import type {Readable} from 'node:stream'
-import {createInflate, createGunzip, createBrotliDecompress} from 'node:zlib'
-import makeDefer from 'jdefer'
+import {createBrotliDecompress, createGunzip, createInflate} from 'node:zlib'
+import './polyfillWithResolvers.js'
 
 // note: there might be multiple encodings applied to the stream
 // we only support one encoding
@@ -49,7 +49,7 @@ export async function readStream(
 
 	let received = 0
 	const buffers: Buffer[] = []
-	const defer = makeDefer<Buffer>()
+	const defer = Promise.withResolvers<Buffer>()
 
 	// attach listeners
 	stream.on('aborted', onAborted)

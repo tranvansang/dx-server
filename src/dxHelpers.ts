@@ -1,11 +1,12 @@
 import type {IncomingMessage, ServerResponse} from 'node:http'
 import {Readable} from 'node:stream'
-import makeDefer from 'jdefer'
 import {promisify} from 'node:util'
 import {entityTag, isFreshETag} from './etag.js'
 import {SendOptions} from 'send'
 import {sendFile} from './staticHelpers.js'
 import {getRes} from './dx.js'
+
+import './polyfillWithResolvers.js'
 
 export type DxContext = {
 	charset?: BufferEncoding // not for redirect
@@ -110,7 +111,7 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 		if (res.writableFinished) {
 			// skipped: response is already finished
 		} else if (res.writableEnded) {
-			const defer = makeDefer<void>()
+			const defer = Promise.withResolvers()
 			res.addListener('finish', defer.resolve)
 			await defer.promise
 			// skipped: response is already ended

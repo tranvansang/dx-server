@@ -2,30 +2,28 @@ import {Chainable, getReq, getRes} from './dx.js'
 import {SendOptions} from 'send'
 import {urlFromReq} from './bodyHelpers.js'
 import {sendFile} from './staticHelpers.js'
+import {matchPattern} from './router.js'
+import {IncomingMessage} from 'node:http'
 
 export function chainStatic(
-	prefix: string,
-	options: SendOptions
+	pattern: string,
+	{getPathname, ...options}: SendOptions & {
+		getPathname?: (req: IncomingMessage) => string // should keep the heading slash
+		// by default: get the full path
+	}
 ): Chainable {
 	return async next => {
 		const req = getReq()
 		if (req.method !== 'GET' && req.method !== 'HEAD') return next()
 
-		if (!prefix.endsWith('/')) prefix += '/'
-		if (!prefix.startsWith('/')) prefix = '/' + prefix
-
-		const {pathname} = urlFromReq(req)
-		if (
-			!pathname.startsWith(prefix)
-			&& !pathname.endsWith('/')
-			&& pathname + '/' !== prefix
-		) return next()
+		const match = matchPattern(urlFromReq(req).pathname, pattern)
+		if (!match) return next()
 
 		try {
 			await sendFile(
 			req,
 			getRes(),
-			pathname.slice(prefix.length - 1), // keep the trailing slash
+			getPathname?.(req) ?? urlFromReq(req).pathname,
 			options,
 			next,
 		)

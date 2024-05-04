@@ -12,7 +12,7 @@ interface URLPatternOptions {
 // '/' matches both https://example.com and https://example.com/
 // '/foo' matches https://example.com/foo but not https://example.com/foo/
 // '/foo/' matches https://example.com/foo/ but not https://example.com/foo
-function matchPattern<Params extends Record<string, string>>(
+export function matchPattern<Params extends Record<string, string>>(
 	pathname: string,
 	pattern: string,
 	// options?: URLPatternOptions,

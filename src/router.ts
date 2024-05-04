@@ -1,80 +1,40 @@
-import type {Key} from 'path-to-regexp'
-import {pathToRegexp} from 'path-to-regexp'
 import {Chainable, getReq} from './dx.js'
+
+import 'urlpattern-polyfill'
 import {urlFromReq} from './bodyHelpers.js'
 
-const cache: Record<string, any> = {}
-const cacheLimit = 10000
-let cacheCount = 0
-
-interface RegexpToPathOptions {
-	end?: boolean // default true. match till end of string
-	strict?: boolean // default false. disallow trailing delimiter
+interface URLPatternOptions {
 	sensitive?: boolean // default false
-	start?: boolean // default true. match from beginning of string
-
-	delimiter?: string // default '/#?'. delimiter for segments
-	endsWith?: string // default undefined. optional character that matches at the end of the string
-	encode?(value: string): string // default x => x. encode strings before inserting into RegExp
-	prefixes?: string // default `./`. List of characters to automatically consider prefixes when parsing.
+	// strict?: boolean // default false. disallow trailing delimiter
 }
 
-function compilePath(pattern: string, options: RegexpToPathOptions) {
-	const cacheKey = JSON.stringify(options)
-	const pathCache = cache[cacheKey] || (cache[cacheKey] = {})
-	if (pathCache[pattern]) return pathCache[pattern]
-
-	const keys: Key[] = []
-	const regexp = pathToRegexp(pattern, keys, options)
-	const result = {
-		regexp,
-		keys
-	}
-
-	if (cacheCount < cacheLimit) {
-		pathCache[pattern] = result
-		cacheCount++
-	}
-	return result
-}
-
-export function matchPattern<Params extends Record<Key['name'], string>>(
+// '' matches nothing
+// '/' matches both https://example.com and https://example.com/
+// '/foo' matches https://example.com/foo but not https://example.com/foo/
+// '/foo/' matches https://example.com/foo/ but not https://example.com/foo
+function matchPattern<Params extends Record<string, string>>(
 	pathname: string,
 	pattern: string,
-	options?: RegexpToPathOptions,
+	options?: URLPatternOptions,
 ) {
-	options = {...options}
-	options.end ??= true
-	options.strict ??= false
-	options.sensitive ??= false
-	options.start ??= true
-
-	if (!pattern && pattern !== '') return
-
-	const {regexp, keys} = compilePath(pattern, options)
-	const match = regexp.exec(pathname)
-	if (!match) return
-
-	const [matched, ...values] = match
+	const matched = new URLPattern({pathname: pattern}, undefined, options).exec({pathname})
+	if (!matched) return
 
 	return {
-		matched, // the matched portion of the URL
-		params: keys.reduce((acc: Record<Key['name'], string>, key: Key, index: number) => {
-			acc[key.name] = values[index]
-			return acc
-		}, {} as Params)
+		matched,
+		params: matched.pathname.groups as Params
 	}
 }
 
 interface RouteContext {
-	matched: string
-	params: Record<Key['name'], string>
+	matched: URLPatternResult
+	params: Record<string, string>
 	next(): any
 }
 interface Route {(context: RouteContext): any}
 interface Routes {[k: string]: Route}
 
-interface RouterOptions extends RegexpToPathOptions {
+interface RouterOptions extends URLPatternOptions {
 	prefix?: string
 }
 

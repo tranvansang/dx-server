@@ -4,7 +4,6 @@ import {promisify} from 'node:util'
 import {entityTag, isFreshETag} from './etag.js'
 import {SendOptions} from 'send'
 import {sendFile} from './staticHelpers.js'
-import {getRes} from './dx.js'
 
 import './polyfillWithResolvers.js'
 
@@ -93,7 +92,7 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 		case 'file':
 			return sendFile(
 				req,
-				getRes(),
+				res,
 				encodeURI(data),
 				options,
 				() => void 0,

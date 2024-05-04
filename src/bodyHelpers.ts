@@ -9,7 +9,7 @@ export interface BufferBodyOptions {
 }
 
 function defaultQueryParser(search: string) {
-	return Object.fromEntries(new URLSearchParams(search)) // support both leading ? and not
+	return Object.fromEntries(new URLSearchParams(search))
 }
 
 let bodyDefaultOptions: BufferBodyOptions = {bodyLimit: 100 << 10} // 100kb

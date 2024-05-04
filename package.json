@@ -30,12 +30,13 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.12.8",
+    "@types/path-to-regexp": "^1.7.0",
     "@types/send": "^0.17.4",
     "typescript": "^5.4.5"
   },
   "dependencies": {
     "jdefer": "^0.0.14",
-    "send": "^0.18.0",
-    "urlpattern-polyfill": "^10.0.0"
+    "path-to-regexp": "^6.2.2",
+    "send": "^0.18.0"
   }
 }

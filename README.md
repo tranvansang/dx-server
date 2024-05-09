@@ -245,7 +245,20 @@ These are DX context object, can be used as follows:
 	- `const json = await getJson()`: lazily load the context, once loaded, it is cached for subsequent calls.
 No chaining is required.
   - Chain it to get the value synchronously: `chain(getJson.chain(), next => console.log(getJson.value))`. Note that the value is calculated in every request.
-- `makeDxContext(fn)`: create a DX context object.
+- `ctx = makeDxContext(fn)`: create a DX context object.
+`fn` is called once per request to calculate the value.
+The value is cached for subsequent calls.
+
+- Context value can be accessed by:
+
+	- `const value = await ctx()`: lazily load the context, once loaded, it is cached for subsequent calls.
+	- `const value = ctx.value`: get the value synchronously. Note that the value must be fetched at least once before via `await ctx()` or by chaining `chain(ctx.chain())`.
+  - `const value = ctx.get(req)`: similar condition as `ctx.value`.
+
+- Context value can be set or overridden by:
+
+	- `ctx.value = value`.
+	- `ctx.set(req, value)`.
 
 - `setHtml`, `setJson`, `setText`, `setBuffer`, `setRedirect`, `setNodeStream`, `setWebStream`, `setFile`: set response body.
 

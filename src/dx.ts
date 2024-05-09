@@ -12,9 +12,58 @@ export interface Chainable<
 	(next: Next, ...p: P): R
 }
 
-const reqStorage = new AsyncLocalStorage<IncomingMessage>()
-const resStorage = new AsyncLocalStorage<ServerResponse>()
-const dxStorage = new AsyncLocalStorage<DxContext>()
+export interface Context<
+	T,
+	Params extends any[],
+	R = any,
+	Next = (...np: any[]) => any,
+> {
+	value: Awaited<T> // can be undefined
+	get(req: IncomingMessage): T
+	set(req: IncomingMessage, value: T): void
+	(...params: Params): Promise<T>
+	chain(...params: Params): Chainable<Params, R, Next>
+}
+export function makeDxContext<
+	T,
+	Params extends any[],
+	R = any,
+	Next = (...np: any[]) => any,
+>(maker: (...params: Params) => T): Context<T, Params, R, Next> {
+	const promiseSymbol = Symbol('promise')
+	const valueSymbol = Symbol('value')
+	// wrap in an async function to ensure the maker is called only once
+	const context: Context<T, Params, R, Next> = (...params: Params) => getReq()[promiseSymbol] ??= (async () => {
+		try {
+			return getReq()[valueSymbol] = await maker(...params)
+		} catch (e) {
+			throw e
+		}
+	})()
+	Object.defineProperty(context, 'value', {
+		get() {return getReq()[valueSymbol]},
+		set(value) {
+			getReq()[promiseSymbol] = Promise.resolve(value)
+			getReq()[valueSymbol] = value
+		}
+	})
+	context.chain = (...params) => async next => {
+		await context(...params)
+		return next()
+	}
+	context.set = (req, value) => {
+		req[promiseSymbol] = Promise.resolve(value)
+		req[valueSymbol] = value
+	}
+	context.get = req => req[valueSymbol]
+	return context
+}
+
+const requestStorage = new AsyncLocalStorage<{
+	req: IncomingMessage
+	res: ServerResponse
+}>()
+const dxContext = makeDxContext<DxContext>(options => ({...options}))
 export function dxServer(
 	req: IncomingMessage,
 	res: ServerResponse,
@@ -24,15 +73,9 @@ export function dxServer(
 	} = {}
 ): Chainable {
 	return async next => {
-		const dx: DxContext = {...options}
-		const result = await dxStorage.run(
-			dx,
-			() => reqStorage.run(
-				req,
-				() => resStorage.run(res, next)
-			)
-		)
-		await writeRes(req, res, dx)
+		dxContext.set(req, {...options})
+		const result = await requestStorage.run({req, res}, next)
+		await writeRes(req, res, dxContext.get(req))
 		return result
 	}
 }
@@ -41,16 +84,12 @@ export function dxServer(
 // url: full url without server, protocol, port.
 // headers: if headers are repeated, they are joined by comma. Header names are lowercased.
 // rawHeaders: list of header name and value in a flat array. Case is preserved.
-export function getReq(): IncomingMessage {
-	return reqStorage.getStore()!
-}
-export function getRes(): ServerResponse {
-	return resStorage.getStore()!
-}
+export function getReq(): IncomingMessage {return requestStorage.getStore()!.req}
+export function getRes(): ServerResponse {return requestStorage.getStore()!.res}
 
 export function setText(text: string, {status}: { status?: number } = {}) {
 	const res = getRes()
-	const dx = dxStorage.getStore()!
+	const dx = dxContext.value
 	if (status) res.statusCode = status
 	dx.data = text
 	dx.type = 'text'
@@ -58,12 +97,12 @@ export function setText(text: string, {status}: { status?: number } = {}) {
 
 export function setHtml(html: string, opts: { status?: number } = {}) {
 	setText(html, opts)
-	const dx = dxStorage.getStore()!
+	const dx = dxContext.value
 	dx.type = 'html'
 }
 
 export function setFile(filePath: string, options?: SendOptions) {
-	const dx = dxStorage.getStore()!
+	const dx = dxContext.value
 	dx.data = filePath
 	dx.type = 'file'
 	dx.options = options
@@ -71,7 +110,7 @@ export function setFile(filePath: string, options?: SendOptions) {
 
 export function setBuffer(buffer: Buffer, {status}: { status?: number } = {}) {
 	const res = getRes()
-	const dx = dxStorage.getStore()!
+	const dx = dxContext.value
 	if (status) res.statusCode = status
 	dx.data = buffer
 	dx.type = 'buffer'
@@ -79,7 +118,7 @@ export function setBuffer(buffer: Buffer, {status}: { status?: number } = {}) {
 
 export function setNodeStream(stream: Readable, {status}: { status?: number } = {}) {
 	const res = getRes()
-	const dx = dxStorage.getStore()!
+	const dx = dxContext.value
 	if (status) res.statusCode = status
 	dx.data = stream
 	dx.type = 'nodeStream'
@@ -87,7 +126,7 @@ export function setNodeStream(stream: Readable, {status}: { status?: number } = 
 
 export function setWebStream(stream: ReadableStream, {status}: { status?: number } = {}) {
 	const res = getRes()
-	const dx = dxStorage.getStore()!
+	const dx = dxContext.value
 	if (status) res.statusCode = status
 	dx.data = stream
 	dx.type = 'webStream'
@@ -97,14 +136,14 @@ export function setJson(json: any, {status}: { status?: number } = {}) {
 	const res = getRes()
 	if (status) res.statusCode = status
 
-	const dx = dxStorage.getStore()!
+	const dx = dxContext.value
 	dx.data = json
 	dx.type = 'json'
 }
 
 export function setRedirect(url: string, status: 301 | 302) {
 	const res = getRes()
-	const dx = dxStorage.getStore()!
+	const dx = dxContext.value
 	res.statusCode = status
 	dx.data = url
 	dx.type = 'redirect'
@@ -124,41 +163,3 @@ export function setRedirect(url: string, status: 301 | 302) {
 // because in most applications, users can specify a simple filename which usually doesn't need to be validated.
 // we leave setDownload() implementation for users, for now.
 
-export interface Context<
-	T,
-	Params extends any[],
-	R = any,
-	Next = (...np: any[]) => any,
-> {
-	value: Awaited<T> // can be undefined
-	chain(...params: Params): Chainable<Params, R, Next>
-	(...params: Params): Promise<T>
-}
-export function makeDxContext<
-	T,
-	Params extends any[],
-	R = any,
-	Next = (...np: any[]) => any,
->(maker: (...params: Params) => T): Context<T, Params, R, Next> {
-	const promiseSymbol = Symbol('promise')
-	const valueSymbol = Symbol('value')
-	// wrap in an async function to ensure the maker is called only once
-	const context: Context<T, Params, R, Next> = (...params: Params) => getReq()[promiseSymbol] ??= (async () => {
-		try {
-			return getReq()[valueSymbol] = await maker(...params)
-		} catch (e) {
-			throw e
-		}
-	})()
-	Object.defineProperty(context, 'value', {
-		get() {
-			if (!getReq()[promiseSymbol]) throw new Error('value is not ready')
-			return getReq()[valueSymbol]
-		}
-	})
-	context.chain = (...params) => async next => {
-		await context(...params)
-		return next()
-	}
-	return context
-}

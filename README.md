@@ -48,7 +48,7 @@ import {fileURLToPath} from 'node:url'
 
 new Server().on('request', (req, res) => chain(
 		dxServer(req, res),
-		chainStatic('/', {root: resolve(dirname(fileURLToPath(import.meta.url)), 'public')}),
+		chainStatic('/*', {root: resolve(dirname(fileURLToPath(import.meta.url)), 'public')}),
 		() => setHtml('not found', {status: 404}),
 	)()
 ).listen(3000, () => console.log('server is listening at 3000'))
@@ -281,7 +281,12 @@ import {resolve, dirname} from 'node:path'
 import {fileURLToPath} from 'node:url'
 
 chain(
-	chainStatic('/assets', {root: resolve(dirname(fileURLToPath(import.meta.url)), 'public')})
+	chainStatic('/assets/*', {
+		root: resolve(dirname(fileURLToPath(import.meta.url)), 'public'),
+		getPathname(req) {
+			return new URL(req.url, 'http://localhost').pathname.slice('/assets'.length)
+		},
+	}),
 )
 ```
 

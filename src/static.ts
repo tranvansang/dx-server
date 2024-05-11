@@ -8,7 +8,7 @@ import {IncomingMessage} from 'node:http'
 export function chainStatic(
 	pattern: string,
 	{getPathname, ...options}: SendOptions & {
-		getPathname?: (req: IncomingMessage) => string // should keep the heading slash
+		getPathname?(req: IncomingMessage): string // should keep the heading slash
 		// by default: get the full path
 	}
 ): Chainable {

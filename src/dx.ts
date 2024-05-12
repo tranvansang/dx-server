@@ -33,13 +33,7 @@ export function makeDxContext<
 	const promiseSymbol = Symbol('promise')
 	const valueSymbol = Symbol('value')
 	// wrap in an async function to ensure the maker is called only once
-	const context: Context<T, Params, R, Next> = (...params: Params) => getReq()[promiseSymbol] ??= (async () => {
-		try {
-			return getReq()[valueSymbol] = await maker(...params)
-		} catch (e) {
-			throw e
-		}
-	})()
+	const context: Context<T, Params, R, Next> = (...params: Params) => getReq()[promiseSymbol] ??= (async () => getReq()[valueSymbol] = await maker(...params))()
 	Object.defineProperty(context, 'value', {
 		get() {return getReq()[valueSymbol]},
 		set(value) {

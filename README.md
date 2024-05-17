@@ -324,8 +324,7 @@ Note the following:
 `Route` is defined as follows:
 ```typescript
 interface RouteContext {
-	matched: URLPatternResult // result returned from URLPattern.exec()
-	params: Record<string, string>
+	matched: URLPatternResult // result returned from URLPattern.exec(). To get params: matched.pathname.groups
 	next(): any
 }
 type Route = (context: RouteContext) => any

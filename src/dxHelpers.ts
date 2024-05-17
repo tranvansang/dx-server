@@ -149,6 +149,7 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 				} else res.write(bufferOrStream)
 			} else {
 				bufferOrStream.pipe(res)
+				return // no res.end()
 			}
 			// we do not support content-encoding (gzip, deflate, br) and leave it to reverse proxy or CDN
 		}

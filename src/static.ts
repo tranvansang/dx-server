@@ -2,13 +2,11 @@ import {Chainable, getReq, getRes} from './dx.js'
 import {SendOptions} from 'send'
 import {urlFromReq} from './bodyHelpers.js'
 import {sendFile} from './staticHelpers.js'
-import {matchPattern} from './router.js'
-import {IncomingMessage} from 'node:http'
 
 export function chainStatic(
 	pattern: string,
 	{getPathname, ...options}: SendOptions & {
-		getPathname?(req: IncomingMessage): string // should keep the heading slash
+		getPathname?(matched: URLPatternResult): string // should keep the heading slash
 		// by default: get the full path
 	}
 ): Chainable {
@@ -16,14 +14,15 @@ export function chainStatic(
 		const req = getReq()
 		if (req.method !== 'GET' && req.method !== 'HEAD') return next()
 
-		const match = matchPattern(urlFromReq(req).pathname, pattern)
-		if (!match) return next()
+		const {pathname} = urlFromReq(req)
+		const matched = new URLPattern({pathname: pattern}).exec({pathname})
+		if (!matched) return next()
 
 		try {
 			await sendFile(
 			req,
 			getRes(),
-			getPathname?.(req) ?? urlFromReq(req).pathname,
+			getPathname?.(matched) ?? pathname,
 			options,
 			next,
 		)

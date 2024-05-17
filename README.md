@@ -283,8 +283,8 @@ import {fileURLToPath} from 'node:url'
 chain(
 	chainStatic('/assets/*', {
 		root: resolve(dirname(fileURLToPath(import.meta.url)), 'public'),
-		getPathname(req) {
-			return new URL(req.url, 'http://localhost').pathname.slice('/assets'.length)
+		getPathname(matched) {
+			return new URL(getReq().url, 'http://localhost').pathname.slice('/assets'.length)
 		},
 	}),
 )

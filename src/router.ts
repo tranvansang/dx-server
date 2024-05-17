@@ -8,27 +8,8 @@ interface URLPatternOptions {
 	// strict?: boolean // default false. disallow trailing delimiter
 }
 
-// '' matches nothing
-// '/' matches both https://example.com and https://example.com/
-// '/foo' matches https://example.com/foo but not https://example.com/foo/
-// '/foo/' matches https://example.com/foo/ but not https://example.com/foo
-export function matchPattern<Params extends Record<string, string>>(
-	pathname: string,
-	pattern: string,
-	// options?: URLPatternOptions,
-) {
-	const matched = new URLPattern({pathname: pattern}).exec({pathname})
-	if (!matched) return
-
-	return {
-		matched,
-		params: matched.pathname.groups as Params
-	}
-}
-
 interface RouteContext {
 	matched: URLPatternResult
-	params: Record<string, string>
 	next(): any
 }
 interface Route {(context: RouteContext): any}
@@ -81,11 +62,12 @@ function makeRouter(
 		const req = getReq()
 		if (method !== undefined && req.method !== method.toUpperCase()) return next()
 		for (const [pattern, handler] of routes) {
-			const match = matchPattern(urlFromReq(req).pathname, `${prefix}${pattern}`, options)
-			if (match) return handler({
-				...match,
-				next,
-			})
+// '' matches nothing
+// '/' matches both https://example.com and https://example.com/
+// '/foo' matches https://example.com/foo but not https://example.com/foo/
+// '/foo/' matches https://example.com/foo/ but not https://example.com/foo
+			const matched = new URLPattern({pathname: `${prefix}${pattern}`}).exec({pathname: urlFromReq(req).pathname})
+			if (matched) return handler({matched, next})
 		}
 		return next()
 	}

@@ -9,7 +9,7 @@ export function sendFile(
 	options: SendOptions | undefined,
 	next: () => any,
 	) {
-	const defer = Promise.withResolvers()
+	const defer = Promise.withResolvers<void>()
 	send(req, pathname, options)
 		.on('error', e => defer.reject(e))
 		.on('end', () => defer.resolve())

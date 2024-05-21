@@ -20,12 +20,12 @@ export function chainStatic(
 
 		try {
 			await sendFile(
-			req,
-			getRes(),
-			getPathname?.(matched) ?? pathname,
-			options,
-			next,
-		)
+				req,
+				getRes(),
+				getPathname?.(matched) ?? pathname,
+				options,
+				next,
+			)
 		} catch (err) {
 			return next(err)
 			// if (err.code === 'ENOENT') return next()

@@ -89,6 +89,14 @@ export function setText(text: string, {status}: { status?: number } = {}) {
 	dx.type = 'text'
 }
 
+export function setEmpty({status}: { status?: number } = {}) {
+	const res = getRes()
+	const dx = dxContext.value
+	if (status) res.statusCode = status
+	dx.data = undefined
+	dx.type = 'empty'
+}
+
 export function setHtml(html: string, opts: { status?: number } = {}) {
 	setText(html, opts)
 	const dx = dxContext.value

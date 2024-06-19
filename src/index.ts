@@ -8,6 +8,7 @@ export {
 	setBuffer,
 	setRedirect,
 	setText,
+	setEmpty,
 	setFile,
 	makeDxContext,
 } from './dx.js'

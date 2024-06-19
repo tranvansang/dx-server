@@ -13,6 +13,11 @@ export type DxContext = {
 	disableEtag?: boolean
 } & (
 	| {
+		type: 'empty'
+	data: undefined
+	options: undefined
+}
+	| {
 	type: 'text'
 	data: string
 	options: undefined
@@ -100,6 +105,8 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 		case undefined:
 			// skip response. Some middleware may handle it outside the chain. For example, express middleware
 			return
+		case 'empty':
+			break
 		default:
 			if (!res.getHeader('content-type')) res.setHeader('content-type', 'text/plain')
 			throw new Error(`unsupported response type ${type}`)
@@ -127,7 +134,7 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 		if (res.statusCode === 205) { // reset content. Tell client to clear the form, etc.
 			res.setHeader('content-length', 0)
 			res.removeHeader('transfer-encoding')
-		} else if (req.method === 'HEAD') {
+		} else if (req.method === 'HEAD' || type === 'empty') {
 			// write nothing
 		} else {
 			if (Buffer.isBuffer(bufferOrStream)) {

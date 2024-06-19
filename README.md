@@ -65,7 +65,7 @@ import chain from 'jchain'
 import dxServer, {
 	getReq, getRes,
 	getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery,
-	setHtml, setJson, setText, setBuffer, setRedirect, setNodeStream, setWebStream, setFile,
+	setHtml, setJson, setText, setEmpty, setBuffer, setRedirect, setNodeStream, setWebStream, setFile,
 	router, connectMiddlewares, chainStatic, makeDxContext
 } from 'dx-server'
 import {expressApp} from 'dx-server/express'
@@ -219,7 +219,7 @@ All exported APIs:
 ```javascript
 import dxServer, {
 	getReq, getRes, getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery,
-	setHtml, setJson, setText, setBuffer, setRedirect, setNodeStream, setWebStream, setFile,
+	setHtml, setJson, setText, setEmpty, setBuffer, setRedirect, setNodeStream, setWebStream, setFile,
 	router, connectMiddlewares, chainStatic, makeDxContext
 } from 'dx-server'
 import {expressApp, expressRouter} from 'dx-server/express' // requires express installed
@@ -233,7 +233,7 @@ import {
 ```javascript
 import dxServer, {
 	getReq, getRes, getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery,
-	setHtml, setJson, setText, setBuffer, setRedirect, setNodeStream, setWebStream, setFile,
+	setHtml, setJson, setText, setEmpty, setBuffer, setRedirect, setNodeStream, setWebStream, setFile,
 	makeDxContext
 } from 'dx-server'
 ```
@@ -260,7 +260,7 @@ The value is cached for subsequent calls.
 	- `ctx.value = value`.
 	- `ctx.set(req, value)`.
 
-- `setHtml`, `setJson`, `setText`, `setBuffer`, `setRedirect`, `setNodeStream`, `setWebStream`, `setFile`: set response body.
+- `setHtml`, `setJson`, `setText`, `setEmpty`, `setBuffer`, `setRedirect`, `setNodeStream`, `setWebStream`, `setFile`: set response body.
 
 - `connectMiddlewares(...middlewares)`: connect middlewares. For example:
 ```javascript

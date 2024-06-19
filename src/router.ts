@@ -66,6 +66,11 @@ function makeRouter(
 // '/' matches both https://example.com and https://example.com/
 // '/foo' matches https://example.com/foo but not https://example.com/foo/
 // '/foo/' matches https://example.com/foo/ but not https://example.com/foo
+
+			// path can be '*' for OPTIONS request
+			// to test: curl -X OPTIONS --request-target '*' http://localhost:3000 -D -
+			// req.url === '*'
+			// new URL('*', 'https://example.com').pathname === '/*'
 			const matched = new URLPattern({pathname: `${prefix}${pattern}`}).exec({pathname: urlFromReq(req).pathname})
 			if (matched) return handler({matched, next})
 		}

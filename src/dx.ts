@@ -29,7 +29,7 @@ export function makeDxContext<
 	Params extends any[],
 	R = any,
 	Next = (...np: any[]) => any,
->(maker: (...params: Params) => T): Context<T, Params, R, Next> {
+>(maker: (...params: Params) => T | Promise<T>): Context<T, Params, R, Next> {
 	const promiseSymbol = Symbol('promise')
 	const valueSymbol = Symbol('value')
 	// wrap in an async function to ensure the maker is called only once

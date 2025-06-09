@@ -1,6 +1,4 @@
 import {Chainable, getReq} from './dx.js'
-
-import 'urlpattern-polyfill'
 import {urlFromReq} from './bodyHelpers.js'
 
 interface URLPatternOptions {

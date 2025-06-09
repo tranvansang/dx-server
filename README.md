@@ -11,7 +11,7 @@ A modern, unopinionated, and performant Node.js server framework built on AsyncL
 - 🔗 **Chainable middleware** - Elegant middleware composition with [jchain](https://www.npmjs.com/package/jchain)
 - 🎯 **Type-safe** - Written in TypeScript with comprehensive type definitions
 - 🔄 **Express compatible** - Use existing Express middleware and applications
-- 📦 **Zero dependencies** - Minimal core with only essential dependencies
+- 📦 **Minimal dependencies** - Only one runtime dependency (`send` for static file serving, planned for removal)
 - 🛡️ **Built-in body parsing** - JSON, text, URL-encoded, and raw body parsing with size limits
 - 🗂️ **Static file serving** - Efficient static file handling with ETag support
 - 🔀 **Modern routing** - URLPattern-based routing (not Express patterns)
@@ -28,6 +28,38 @@ yarn add dx-server jchain
 # pnpm
 pnpm add dx-server jchain
 ```
+
+### URLPattern Support
+
+dx-server uses the [URLPattern API](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern) for routing, which is natively supported in Node.js v19.0.0 and later.
+
+**For Node.js < 19.0.0**, you need to install a polyfill:
+
+```bash
+npm install urlpattern-polyfill
+```
+
+Then import it before using dx-server:
+
+```javascript
+// Add this at the top of your entry file
+import 'urlpattern-polyfill'
+
+// Then import dx-server
+import dxServer from 'dx-server'
+```
+
+To check if your runtime supports URLPattern natively:
+
+```javascript
+if (typeof URLPattern === 'undefined') {
+  console.log('URLPattern not supported, polyfill required')
+}
+```
+
+### Future Roadmap
+
+**Zero Dependencies**: The `send` package (currently used for static file serving) is planned for removal in a future version. This will make dx-server a true zero-dependency framework. Until then, if you don't need static file serving, the `send` dependency won't be loaded or affect your application.
 
 ## Quick Start
 

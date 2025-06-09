@@ -1,4 +1,4 @@
-import send, {SendOptions} from 'send'
+import {send, SendOptions} from './send.js'
 import {IncomingMessage, ServerResponse} from 'node:http'
 import './polyfillWithResolvers.js'
 

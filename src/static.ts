@@ -1,12 +1,12 @@
 import {Chainable, getReq, getRes} from './dx.js'
-import {SendOptions} from 'send'
+import {SendOptions} from './send.js'
 import {urlFromReq} from './bodyHelpers.js'
 import {sendFile} from './staticHelpers.js'
 
 export function chainStatic(
 	pattern: string,
 	{getPathname, ...options}: SendOptions & {
-		getPathname?(matched: URLPatternResult): string // should keep the heading slash
+		getPathname?(matched: any): string // should keep the heading slash
 		// by default: get the full path
 	}
 ): Chainable {

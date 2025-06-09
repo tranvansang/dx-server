@@ -11,7 +11,7 @@ A modern, unopinionated, and performant Node.js server framework built on AsyncL
 - 🔗 **Chainable middleware** - Elegant middleware composition with [jchain](https://www.npmjs.com/package/jchain)
 - 🎯 **Type-safe** - Written in TypeScript with comprehensive type definitions
 - 🔄 **Express compatible** - Use existing Express middleware and applications
-- 📦 **Minimal dependencies** - Only one runtime dependency (`send` for static file serving, planned for removal)
+- 📦 **Zero dependencies** - No runtime dependencies, all functionality built-in
 - 🛡️ **Built-in body parsing** - JSON, text, URL-encoded, and raw body parsing with size limits
 - 🗂️ **Static file serving** - Efficient static file handling with ETag support
 - 🔀 **Modern routing** - URLPattern-based routing (not Express patterns)
@@ -57,9 +57,6 @@ if (typeof URLPattern === 'undefined') {
 }
 ```
 
-### Future Roadmap
-
-**Zero Dependencies**: The `send` package (currently used for static file serving) is planned for removal in a future version. This will make dx-server a true zero-dependency framework. Until then, if you don't need static file serving, the `send` dependency won't be loaded or affect your application.
 
 ## Quick Start
 

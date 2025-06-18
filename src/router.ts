@@ -56,10 +56,11 @@ function makeRouter(
 	routes: [pattern: string, route: Route][],
 	{prefix = '', ...options}: RouterOptions = {},
 ): Chainable {
+	const routeWithUrlPatterns = routes.map(([pattern, handler]) => [new URLPattern({pathname: `${prefix}${pattern}`}), handler])
 	return next => {
 		const req = getReq()
 		if (method !== undefined && req.method !== method.toUpperCase()) return next()
-		for (const [pattern, handler] of routes) {
+		for (const [urlPattern, handler] of routeWithUrlPatterns) {
 // '' matches nothing
 // '/' matches both https://example.com and https://example.com/
 // '/foo' matches https://example.com/foo but not https://example.com/foo/
@@ -69,7 +70,7 @@ function makeRouter(
 			// to test: curl -X OPTIONS --request-target '*' http://localhost:3000 -D -
 			// req.url === '*'
 			// new URL('*', 'https://example.com').pathname === '/*'
-			const matched = new URLPattern({pathname: `${prefix}${pattern}`}).exec({pathname: urlFromReq(req).pathname})
+			const matched = urlPattern.exec({pathname: urlFromReq(req).pathname})
 			if (matched) return handler({matched, next})
 		}
 		return next()

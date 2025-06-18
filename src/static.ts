@@ -10,12 +10,13 @@ export function chainStatic(
 		// by default: get the full path
 	}
 ): Chainable {
+	const urlPattern = new URLPattern({pathname: pattern})
 	return async next => {
 		const req = getReq()
 		if (req.method !== 'GET' && req.method !== 'HEAD') return next()
 
 		const {pathname} = urlFromReq(req)
-		const matched = new URLPattern({pathname: pattern}).exec({pathname})
+		const matched = urlPattern.exec({pathname})
 		if (!matched) return next()
 
 		try {

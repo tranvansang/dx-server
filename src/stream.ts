@@ -92,7 +92,7 @@ export async function readStream(
 		stream.off('aborted', onAborted)
 		stream.off('data', onData)
 		stream.off('end', onEnd)
-		stream.off('error', onEnd)
+		stream.off('error', onError)
 		stream.off('close', onClose)
 	}
 

@@ -145,7 +145,7 @@ export async function sendFile(
 				res.statusCode === 304)
 			&& fresh(req.headers, {
 				etag: res.getHeader('ETag'),
-				'last-modified': this.res.getHeader('Last-Modified')
+				'last-modified': res.getHeader('Last-Modified')
 			})
 		) {
 			// removeContentHeaderFields

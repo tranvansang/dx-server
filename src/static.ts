@@ -19,18 +19,12 @@ export function chainStatic(
 		const matched = urlPattern.exec({pathname})
 		if (!matched) return next()
 
-		try {
-			await sendFile(
-				req,
-				getRes(),
-				getPathname?.(matched) ?? pathname,
-				options,
-				next,
-			)
-		} catch (err) {
-			return next(err)
-			// if (err.code === 'ENOENT') return next()
-			// throw err
-		}
+		await sendFile(
+			req,
+			getRes(),
+			getPathname?.(matched) ?? pathname,
+			options,
+			next, // if request's pathname matches pattern, but file is not found, next() will be called with error
+		)
 	}
 }

@@ -30,15 +30,23 @@ export function makeDxContext<
 	R = any,
 	Next = (...np: any[]) => any,
 >(maker: (...params: Params) => T | Promise<T>): Context<T, Params, R, Next> {
-	const promiseSymbol = Symbol('promise')
-	const valueSymbol = Symbol('value')
-	// wrap in an async function to ensure the maker is called only once
-	const context: Context<T, Params, R, Next> = (...params: Params) => getReq()[promiseSymbol] ??= (async () => getReq()[valueSymbol] = await maker(...params))()
+	const promiseMap = new WeakMap<IncomingMessage, Promise<T>>()
+	const valueMap = new WeakMap<IncomingMessage, T>()
+	const context: Context<T, Params, R, Next> = (...params: Params) => {
+		const req = getReq()
+		if (!promiseMap.has(req)) promiseMap.set(req, (async () => {
+			const value = await maker(...params)
+			valueMap.set(req, value)
+			return value
+		})())
+		return promiseMap.get(req)
+	}
 	Object.defineProperty(context, 'value', {
-		get() {return getReq()[valueSymbol]},
+		get() {return valueMap.get(getReq())},
 		set(value) {
-			getReq()[promiseSymbol] = Promise.resolve(value)
-			getReq()[valueSymbol] = value
+			const req = getReq()
+			promiseMap.set(req, Promise.resolve(value))
+			valueMap.set(req, value)
 		}
 	})
 	context.chain = (...params) => async next => {
@@ -46,10 +54,10 @@ export function makeDxContext<
 		return next()
 	}
 	context.set = (req, value) => {
-		req[promiseSymbol] = Promise.resolve(value)
-		req[valueSymbol] = value
+		promiseMap.set(req, Promise.resolve(value))
+		valueMap.set(req, value)
 	}
-	context.get = req => req[valueSymbol]
+	context.get = req => valueMap.get(req)
 	return context
 }
 

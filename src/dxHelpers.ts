@@ -1,9 +1,8 @@
 import type {IncomingMessage, ServerResponse} from 'node:http'
 import {Readable} from 'node:stream'
 import {promisify} from 'node:util'
-import {entityTag, isFreshETag} from './etag.js'
-import {SendOptions} from './send.js'
-import {sendFile} from './staticHelpers.js'
+import {entityTag, isFreshETag} from './vendors/etag.js'
+import {sendFile, type SendOptions} from './staticHelpers.js'
 
 import './polyfillWithResolvers.js'
 
@@ -95,13 +94,16 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 			bufferOrStream = Buffer.from('', charset)
 			break
 		case 'file':
-			return sendFile(
-				req,
-				res,
-				encodeURI(data),
-				options,
-				() => void 0,
-			)
+			try {
+				await sendFile(
+					req,
+					res,
+					data,
+					options,
+				)
+			} catch (e) {
+				// do nothing
+			}
 		case undefined:
 			// skip response. Some middleware may handle it outside the chain. For example, express middleware
 			return

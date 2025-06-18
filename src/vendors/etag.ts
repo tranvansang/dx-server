@@ -1,6 +1,7 @@
 // etag: https://github.com/jshttp/etag/blob/b9f0642256e63654287299d205bc6ced71b1a228/index.js#L39
 import crypto from 'node:crypto'
 import type {IncomingMessage} from 'node:http'
+import type {Stats} from 'node:fs'
 
 export function entityTag(buf: Buffer, weak?: boolean) {
 	// pre-computed empty
@@ -17,7 +18,7 @@ export function entityTag(buf: Buffer, weak?: boolean) {
 }
 
 const CACHE_CONTROL_NO_CACHE_REGEXP = /(?:^|,)\s*?no-cache\s*?(?:,|$)/
-export function statTag(stat) {
+export function statTag(stat: Stats) {
 	const mtime = stat.mtime.getTime().toString(16)
 	const size = stat.size.toString(16)
 

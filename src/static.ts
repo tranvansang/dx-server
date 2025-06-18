@@ -1,5 +1,5 @@
 import {Chainable, getReq, getRes} from './dx.js'
-import {SendOptions} from './send.js'
+import type {SendOptions} from './staticHelpers.js'
 import {urlFromReq} from './bodyHelpers.js'
 import {sendFile} from './staticHelpers.js'
 
@@ -19,12 +19,15 @@ export function chainStatic(
 		const matched = urlPattern.exec({pathname})
 		if (!matched) return next()
 
-		await sendFile(
-			req,
-			getRes(),
-			getPathname?.(matched) ?? pathname,
-			options,
-			next, // if request's pathname matches pattern, but file is not found, next() will be called with error
-		)
+		try {
+			await sendFile(
+				req,
+				getRes(),
+				decodeURIComponent(getPathname?.(matched) ?? pathname),
+				options,
+			)
+		} catch (e) {
+			return next(e) // if request's pathname matches pattern, but file is not found, next() will be called with error
+		}
 	}
 }

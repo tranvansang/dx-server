@@ -40,7 +40,7 @@ export function parseContentType (header: string) {
 		: header.trim()
 
 	if (!TYPE_REGEXP.test(mediaType)) throw new TypeError(`invalid media type: ${mediaType}`)
-	const parameters: Record<string, string> = {}
+	const parameters: Record<string, string> = Object.create(null)
 
 	// parse parameters
 	if (index !== -1) {

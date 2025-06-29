@@ -1,10 +1,10 @@
 import type {IncomingMessage, ServerResponse} from 'node:http'
 import {Readable} from 'node:stream'
 import {promisify} from 'node:util'
-import {entityTag, isFreshETag} from './vendors/etag.js'
-import {sendFile, type SendOptions} from './staticHelpers.js'
+import {entityTag, isFreshETag} from './vendors/etag.ts'
+import {sendFile, type SendOptions} from './staticHelpers.ts'
 
-import './polyfillWithResolvers.js'
+import './polyfillWithResolvers.ts'
 
 export type DxContext = {
 	charset?: BufferEncoding // not for redirect

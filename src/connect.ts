@@ -1,6 +1,6 @@
 import type {IncomingMessage, ServerResponse} from 'node:http'
-import {Chainable, getReq, getRes} from './dx.js'
-import './polyfillWithResolvers.js'
+import {type Chainable, getReq, getRes} from './dx.ts'
+import './polyfillWithResolvers.ts'
 
 // support async middleware
 // do not support error middleware (the one with 4 arguments)

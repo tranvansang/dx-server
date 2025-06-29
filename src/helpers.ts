@@ -1,4 +1,4 @@
-export {writeRes} from './dxHelpers.js'
+export {writeRes} from './dxHelpers.ts'
 export {
 	setBufferBodyDefaultOptions,
 	bufferFromReq,
@@ -7,4 +7,4 @@ export {
 	textFromReq,
 	urlEncodedFromReq,
 	queryFromReq,
-} from './bodyHelpers.js'
+} from './bodyHelpers.ts'

@@ -1,6 +1,6 @@
 import {IncomingMessage} from 'node:http'
-import {getContentStream, readStream} from './stream.js'
-import {parseContentType} from './vendors/contentType.js'
+import {getContentStream, readStream} from './stream.ts'
+import {parseContentType} from './vendors/contentType.ts'
 
 export interface BufferBodyOptions {
 	bodyLimit: number

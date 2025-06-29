@@ -11,8 +11,8 @@ export {
 	setEmpty,
 	setFile,
 	makeDxContext,
-} from './dx.js'
-import {dxServer} from './dx.js'
+} from './dx.ts'
+import {dxServer} from './dx.ts'
 export {
 	getBuffer,
 	getJson,
@@ -20,9 +20,9 @@ export {
 	getText,
 	getUrlEncoded,
 	getQuery,
-} from './body.js'
-export {router} from './router.js'
-export {connectMiddlewares} from './connect.js'
-export {chainStatic} from './static.js'
+} from './body.ts'
+export {router} from './router.ts'
+export {connectMiddlewares} from './connect.ts'
+export {chainStatic} from './static.ts'
 
 export default dxServer

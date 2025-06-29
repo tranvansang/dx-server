@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "scripts": {
+    "start": "node --watch main.ts"
+  },
+  "dependencies": {
+    "jchain": "^0.0.6"
+  }
+}

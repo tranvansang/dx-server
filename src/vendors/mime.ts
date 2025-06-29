@@ -1,17 +1,15 @@
-import mimeDb from './mimeDb.js'
-import {mimeScore} from './mimeScore.js'
+import mimeDb from './mimeDb.ts'
+import {mimeScore} from './mimeScore.ts'
 
 const extensionToMime = Object.create(null)
 
-for (const [type, {extensions}] of Object.entries(mimeDb)) {
-	for (const extension of extensions) {
-		extensionToMime[extension] = preferredType(extension, type, extensionToMime[extension])
-	}
+for (const [type, {extensions = []}] of Object.entries(mimeDb)) {
+	for (const extension of extensions) extensionToMime[extension] = preferredType(extension, type, extensionToMime[extension])
 }
 
 function preferredType(ext, type0, type1) {
-	const score0 = type0 ? mimeScore(type0, db[type0].source) : 0
-	const score1 = type1 ? mimeScore(type1, db[type1].source) : 0
+	const score0 = type0 ? mimeScore(type0, mimeDb[type0].source) : 0
+	const score1 = type1 ? mimeScore(type1, mimeDb[type1].source) : 0
 
 	return score0 > score1 ? type0 : type1
 }

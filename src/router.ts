@@ -1,5 +1,5 @@
-import {Chainable, getReq} from './dx.js'
-import {urlFromReq} from './bodyHelpers.js'
+import {type Chainable, getReq} from './dx.ts'
+import {urlFromReq} from './bodyHelpers.ts'
 
 interface URLPatternOptions {
 	// sensitive?: boolean // default false

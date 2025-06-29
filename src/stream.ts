@@ -2,7 +2,7 @@
 import type {IncomingMessage} from 'node:http'
 import type {Readable} from 'node:stream'
 import {createBrotliDecompress, createGunzip, createInflate} from 'node:zlib'
-import './polyfillWithResolvers.js'
+import './polyfillWithResolvers.ts'
 
 // note: there might be multiple encodings applied to the stream
 // we only support one encoding

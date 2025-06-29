@@ -1,13 +1,13 @@
-import {getReq, makeDxContext} from './dx.js'
+import {getReq, makeDxContext} from './dx.ts'
 import {
-	BufferBodyOptions,
+	type BufferBodyOptions,
 	bufferFromReq,
 	jsonFromReq,
 	queryFromReq,
 	rawFromReq,
 	textFromReq,
 	urlEncodedFromReq
-} from './bodyHelpers.js'
+} from './bodyHelpers.ts'
 
 export const getBuffer = makeDxContext((options?: Partial<BufferBodyOptions>) => bufferFromReq(getReq(), options))
 export const getJson = makeDxContext((options?: Partial<BufferBodyOptions>) => jsonFromReq(getReq(), options))

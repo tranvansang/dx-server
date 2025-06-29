@@ -1,10 +1,11 @@
 import {Server} from 'node:http'
 import chain from 'jchain'
-import dxServer, {chainStatic, setHtml} from '../src/index.ts'
+import dxServer, {chainStatic, router, setFile, setHtml} from '../src/index.ts'
 import {resolve} from 'node:path'
 
 new Server().on('request', (req, res) => chain(
 	dxServer(req, res),
+	router.get('/test', () => setFile(resolve(import.meta.dirname, 'public/dummy.pdf'))),
 	chainStatic('/*', {
 		root: resolve(import.meta.dirname, 'public'),
 	}),

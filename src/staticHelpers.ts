@@ -1,6 +1,6 @@
 import {IncomingMessage, ServerResponse} from 'node:http'
 import './polyfillWithResolvers.ts'
-import {setEmpty, setHtml, setNodeStream} from './dx.ts'
+import {setEmpty, setHtml} from './dx.ts'
 import path from 'node:path'
 import {stat} from 'node:fs/promises'
 import {statTag} from './vendors/etag.ts'
@@ -8,7 +8,7 @@ import {contentTypeForExtension} from './vendors/mime.ts'
 import {fresh, parseHttpDate, parseTokenList} from './vendors/fresh.ts'
 import {parseRange} from './vendors/rangeParser.ts'
 import {createReadStream} from 'node:fs'
-import { onFinished } from './vendors/onFinished.ts'
+import {onFinished} from './vendors/onFinished.ts'
 
 const UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/
 const BYTES_RANGE_REGEXP = /^ *bytes=/
@@ -115,7 +115,7 @@ export async function sendFile(
 	// #endregion
 
 	// content-type
-	if (!res.getHeader('Content-Type')) res.setHeader('Content-Type', contentTypeForExtension(path.extname(pathname)) || 'application/octet-stream')
+	if (!res.getHeader('Content-Type')) res.setHeader('Content-Type', contentTypeForExtension(path.extname(pathname).slice(1)) || 'application/octet-stream')
 
 	// conditional GET support
 	// isConditionalGET
@@ -211,7 +211,7 @@ export async function sendFile(
 	// do stream
 
 	const stream = createReadStream(pathname, {start, end})
-	setNodeStream(stream)
+	stream.pipe(res)
 
 	const defer = Promise.withResolvers<void>()
 
@@ -220,7 +220,7 @@ export async function sendFile(
 		cleanup()
 		defer.reject(err)
 	})
-	stream.on('end', () => defer.resolve())
+	stream.on('end', defer.resolve)
 	function cleanup () {
 		stream.destroy()
 	}

@@ -3,9 +3,9 @@ import {mimeScore} from './mimeScore.ts'
 
 const extensionToMime = Object.create(null)
 
-for (const [type, {extensions = []}] of Object.entries(mimeDb)) {
-	for (const extension of extensions) extensionToMime[extension] = preferredType(extension, type, extensionToMime[extension])
-}
+for (const [type, {extensions = []}] of Object.entries(mimeDb))
+	for (const extension of extensions)
+		extensionToMime[extension] = preferredType(extension, type, extensionToMime[extension])
 
 function preferredType(ext, type0, type1) {
 	const score0 = type0 ? mimeScore(type0, mimeDb[type0].source) : 0

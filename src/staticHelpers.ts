@@ -35,7 +35,7 @@ export interface SendOptions {
 export async function sendFile(
 	req: IncomingMessage,
 	res: ServerResponse,
-	pathname: string, // not plain path, not URI-encoded
+	pathname: string, // plain path, not URI-encoded
 	{
 		root, dotfiles, start = 0, end,
 		disableAcceptRanges, disableLastModified, disableEtag,

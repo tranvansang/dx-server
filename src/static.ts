@@ -1,12 +1,13 @@
 import {Chainable, getReq, getRes} from './dx.js'
 import type {SendOptions} from './staticHelpers.js'
-import {urlFromReq} from './bodyHelpers.js'
 import {sendFile} from './staticHelpers.js'
+import {urlFromReq} from './bodyHelpers.js'
 
 export function chainStatic(
 	pattern: string,
 	{getPathname, ...options}: SendOptions & {
 		getPathname?(matched: any): string // should keep the heading slash
+		// return URI-encoded pathname
 		// by default: get the full path
 	}
 ): Chainable {
@@ -23,7 +24,8 @@ export function chainStatic(
 			await sendFile(
 				req,
 				getRes(),
-				decodeURIComponent(getPathname?.(matched) ?? pathname),
+					getPathname?.(matched)
+				?? decodeURIComponent(pathname),
 				options,
 			)
 		} catch (e) {

@@ -130,8 +130,6 @@ new Server().on('request', (req, res) => chain(
   dxServer(req, res),
   chainStatic('/*', {
     root: resolve(dirname(fileURLToPath(import.meta.url)), 'public'),
-    index: ['index.html'],
-    dotfiles: 'deny'
   }),
   () => setHtml('not found', {status: 404}),
 )()).listen(3000)
@@ -407,9 +405,10 @@ Options:
   ```javascript
   chainStatic('/public/*', {
     root: '/path/to/files',
-    index: ['index.html'],
+    getPathname(matched){return matched.pathname}, // take URLPattern matched object, epects to return the file path
+  // the returned file path must be run through decodeURIComponent before returning
     dotfiles: 'deny',
-    etag: true,
+    disableEtag: false,
     lastModified: true
   })
   ```

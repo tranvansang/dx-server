@@ -6,9 +6,11 @@
 /* istanbul ignore next */
 import {AsyncResource} from 'node:async_hooks'
 
-var defer = typeof setImmediate === 'function'
+const defer = typeof setImmediate === 'function'
 	? setImmediate
-	: function (fn) { process.nextTick(fn.bind.apply(fn, arguments)) }
+	: function (fn) {
+		process.nextTick(fn.bind.apply(fn, arguments))
+	}
 
 /**
  * Invoke callback when the response has finished, useful for
@@ -41,7 +43,7 @@ export function onFinished (msg, listener) {
  */
 
 function isFinished (msg) {
-	var socket = msg.socket
+	const socket = msg.socket
 
 	if (typeof msg.finished === 'boolean') {
 		// OutgoingMessage
@@ -66,9 +68,9 @@ function isFinished (msg) {
  */
 
 function attachFinishedListener (msg, callback) {
-	var eeMsg
-	var eeSocket
-	var finished = false
+	let eeMsg
+	let eeSocket
+	let finished = false
 
 	function onFinish (error) {
 		eeMsg.cancel()
@@ -116,7 +118,7 @@ function attachFinishedListener (msg, callback) {
  */
 
 function attachListener (msg, listener) {
-	var attached = msg.__onFinished
+	let attached = msg.__onFinished
 
 	// create a private single listener with queue
 	if (!attached || !attached.queue) {
@@ -140,10 +142,10 @@ function createListener (msg) {
 		if (msg.__onFinished === listener) msg.__onFinished = null
 		if (!listener.queue) return
 
-		var queue = listener.queue
+		const queue = listener.queue
 		listener.queue = null
 
-		for (var i = 0; i < queue.length; i++) {
+		for (let i = 0; i < queue.length; i++) {
 			queue[i](err, msg)
 		}
 	}
@@ -163,7 +165,7 @@ function createListener (msg) {
 
 // istanbul ignore next: node.js 0.8 patch
 function patchAssignSocket (res, callback) {
-	var assignSocket = res.assignSocket
+	const assignSocket = res.assignSocket
 
 	if (typeof assignSocket !== 'function') return
 
@@ -194,7 +196,7 @@ function tryRequireAsyncHooks () {
  */
 
 function wrap (fn) {
-	var res
+	let res
 
 	// create anonymous resource
 	res = new AsyncResource(fn.name || 'bound-anonymous-fn')
@@ -221,20 +223,20 @@ function first (stuff, done) {
 		throw new TypeError('arg must be an array of [ee, events...] arrays')
 	}
 
-	var cleanups = []
+	const cleanups = []
 
-	for (var i = 0; i < stuff.length; i++) {
-		var arr = stuff[i]
+	for (let i = 0; i < stuff.length; i++) {
+		const arr = stuff[i]
 
 		if (!Array.isArray(arr) || arr.length < 2) {
 			throw new TypeError('each array member must be [ee, events...]')
 		}
 
-		var ee = arr[0]
+		const ee = arr[0]
 
-		for (var j = 1; j < arr.length; j++) {
-			var event = arr[j]
-			var fn = listener(event, callback)
+		for (let j = 1; j < arr.length; j++) {
+			const event = arr[j]
+			const fn = listener(event, callback)
 
 			// listen to the event
 			ee.on(event, fn)
@@ -253,8 +255,8 @@ function first (stuff, done) {
 	}
 
 	function cleanup () {
-		var x
-		for (var i = 0; i < cleanups.length; i++) {
+		let x
+		for (let i = 0; i < cleanups.length; i++) {
 			x = cleanups[i]
 			x.ee.removeListener(x.event, x.fn)
 		}
@@ -276,14 +278,14 @@ function first (stuff, done) {
 
 function listener (event, done) {
 	return function onevent (arg1) {
-		var args = new Array(arguments.length)
-		var ee = this
-		var err = event === 'error'
+		const args = new Array(arguments.length)
+		const ee = this
+		const err = event === 'error'
 			? arg1
 			: null
 
 		// copy args to prevent arguments escaping scope
-		for (var i = 0; i < args.length; i++) {
+		for (let i = 0; i < args.length; i++) {
 			args[i] = arguments[i]
 		}
 

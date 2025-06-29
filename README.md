@@ -138,7 +138,6 @@ new Server().on('request', (req, res) => chain(
 
 This example requires: `npm install express morgan helmet cors`
 
-
 ```javascript
 import {Server} from 'node:http'
 import {promisify} from 'node:util'
@@ -168,7 +167,7 @@ const authContext = makeDxContext(async () => {
   if (getReq().headers.authorization) return {id: 1, name: 'joe (private)'}
 })
 
-const requireAuth = () => {
+function requireAuth() {
   if (!authContext.value) throw new ServerError('Unauthorized', 401, 'UNAUTHORIZED')
 }
 
@@ -427,9 +426,9 @@ router.get('/users/:id', ({matched}) => {
 
 // Multiple routes
 router.post({
-  '/api/users': () => { /* create user */ },
-  '/api/users/:id': ({matched}) => { /* update user */ },
-  '/api/users/:id/posts': ({matched}) => { /* get user posts */ }
+  '/api/users'() { /* create user */ },
+  '/api/users/:id'({matched}) { /* update user */ },
+  '/api/users/:id/posts'({matched}) { /* get user posts */ }
 })
 
 // All HTTP methods supported
@@ -509,7 +508,7 @@ import {
 // Set global defaults
 setBufferBodyDefaultOptions({
   bodyLimit: 10 * 1024 * 1024, // 10MB
-  queryParser: (search) => myCustomParser(search)
+  queryParser(search){return myCustomParser(search)}
 })
 
 // Use directly with req/res (no context required)
@@ -618,7 +617,7 @@ const wss = new WebSocketServer({noServer: true})
 
 server.on('upgrade', (request, socket, head) => {
   if (request.url === '/ws') {
-    wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.handleUpgrade(request, socket, head, ws => {
       wss.emit('connection', ws, request)
     })
   }

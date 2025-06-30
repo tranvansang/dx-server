@@ -1,7 +1,7 @@
 import express, {type Express, type Router} from 'express'
-import {getReq, getRes} from './dx.ts'
+import {getReq, getRes} from './dx.js'
 
-import './polyfillWithResolvers.ts'
+import './polyfillWithResolvers.js'
 
 export async function expressApp(setup: (app: Express) => any) {
 	const map = new WeakMap<Express.Request, PromiseWithResolvers<any>>()

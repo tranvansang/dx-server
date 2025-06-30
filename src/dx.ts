@@ -1,8 +1,8 @@
 import {Readable} from 'node:stream'
 import type {IncomingMessage, ServerResponse} from 'node:http'
 import {AsyncLocalStorage} from 'node:async_hooks'
-import {type DxContext, writeRes} from './dxHelpers.ts'
-import type {SendOptions} from './staticHelpers.ts'
+import {type DxContext, writeRes} from './dxHelpers.js'
+import type {SendOptions} from './staticHelpers.js'
 
 export interface Chainable<
 	P extends any[] = any[],

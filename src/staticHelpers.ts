@@ -1,14 +1,14 @@
 import {IncomingMessage, ServerResponse} from 'node:http'
-import './polyfillWithResolvers.ts'
-import {setEmpty, setHtml} from './dx.ts'
+import './polyfillWithResolvers.js'
+import {setEmpty, setHtml} from './dx.js'
 import path from 'node:path'
 import {stat} from 'node:fs/promises'
-import {statTag} from './vendors/etag.ts'
-import {contentTypeForExtension} from './vendors/mime.ts'
-import {fresh, parseHttpDate, parseTokenList} from './vendors/fresh.ts'
-import {parseRange} from './vendors/rangeParser.ts'
+import {statTag} from './vendors/etag.js'
+import {contentTypeForExtension} from './vendors/mime.js'
+import {fresh, parseHttpDate, parseTokenList} from './vendors/fresh.js'
+import {parseRange} from './vendors/rangeParser.js'
 import {createReadStream} from 'node:fs'
-import {onFinished} from './vendors/onFinished.ts'
+import {onFinished} from './vendors/onFinished.js'
 
 const UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/
 const BYTES_RANGE_REGEXP = /^ *bytes=/

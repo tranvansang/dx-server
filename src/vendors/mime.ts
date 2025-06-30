@@ -1,5 +1,5 @@
-import mimeDb from './mimeDb.ts'
-import {mimeScore} from './mimeScore.ts'
+import mimeDb from './mimeDb.js'
+import {mimeScore} from './mimeScore.js'
 
 const extensionToMime = Object.create(null)
 

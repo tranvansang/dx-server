@@ -1,7 +1,7 @@
-import {type Chainable, getReq, getRes} from './dx.ts'
-import type {SendOptions} from './staticHelpers.ts'
-import {sendFile} from './staticHelpers.ts'
-import {urlFromReq} from './bodyHelpers.ts'
+import {type Chainable, getReq, getRes} from './dx.js'
+import type {SendOptions} from './staticHelpers.js'
+import {sendFile} from './staticHelpers.js'
+import {urlFromReq} from './bodyHelpers.js'
 
 export function chainStatic(
 	pattern: string,

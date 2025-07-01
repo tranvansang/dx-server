@@ -1,32 +1,25 @@
 # dx-server
 
-A modern, unopinionated, and performant Node.js server framework built on AsyncLocalStorage for elegant request/response handling without prop drilling.
+A modern, unopinionated, and performant Node.js server framework built on AsyncLocalStorage for elegant API interfaces.
 
 [![npm version](https://img.shields.io/npm/v/dx-server.svg)](https://www.npmjs.com/package/dx-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
 
-- 🚀 **Context-based architecture** - Access request/response from anywhere using AsyncLocalStorage
+- 🎯 **Elegant API interface** - No need to pass req/res objects through middleware chains
 - 🔗 **Chainable middleware** - Elegant middleware composition with [jchain](https://www.npmjs.com/package/jchain)
-- 🎯 **Type-safe** - Written in TypeScript with comprehensive type definitions
+- 🚀 **Context-based architecture** - Access request/response from anywhere using AsyncLocalStorage
 - 🔄 **Express compatible** - Use existing Express middleware and applications
 - 📦 **Zero dependencies** - No runtime dependencies, all functionality built-in
 - 🛡️ **Built-in body parsing** - JSON, text, URL-encoded, and raw body parsing with size limits
-- 🗂️ **Static file serving** - Efficient static file handling with ETag support
-- 🔀 **Modern routing** - URLPattern-based routing (not Express patterns)
+- 🗂️ **Static file serving** - Efficient static file handling with ETag, Range, and Last-Modified support
+- 🔀 **Modern routing** - URLPattern-based routing
 
 ## Installation
 
 ```bash
-# npm
-npm install dx-server jchain
-
-# yarn
-yarn add dx-server jchain
-
-# pnpm
-pnpm add dx-server jchain
+npm i dx-server jchain
 ```
 
 ### URLPattern Support

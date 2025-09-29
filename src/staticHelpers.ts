@@ -71,7 +71,7 @@ export async function sendFile(
 	}
 
 	// dotfile handling
-	if (parts.some(part => part[0] === '.')) switch (dotfiles) {
+	if (parts.some(part => part.length > 1 && part[0] === '.')) switch (dotfiles) {
 		case 'allow':
 			break
 		case 'deny':

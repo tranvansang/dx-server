@@ -2,7 +2,7 @@ import type {IncomingMessage, ServerResponse} from 'node:http'
 import {Readable} from 'node:stream'
 import {promisify} from 'node:util'
 import {entityTag, isFreshETag} from './vendors/etag.js'
-import {sendFile, sendFileTrusted, type SendOptions} from './staticHelpers.js'
+import {sendFileTrusted, type SendOptions} from './staticHelpers.js'
 
 import './polyfillWithResolvers.js'
 

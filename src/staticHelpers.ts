@@ -2,8 +2,8 @@ import {IncomingMessage, ServerResponse} from 'node:http'
 import './polyfillWithResolvers.js'
 import {setEmpty, setHtml} from './dx.js'
 import path from 'node:path'
-import {stat} from 'node:fs/promises'
-import {statTag} from './vendors/etag.js'
+import {readFile, stat} from 'node:fs/promises'
+import {entityTag, statTag} from './vendors/etag.js'
 import {contentTypeForExtension} from './vendors/mime.js'
 import {fresh, parseHttpDate, parseTokenList} from './vendors/fresh.js'
 import {parseRange} from './vendors/rangeParser.js'
@@ -24,6 +24,9 @@ export interface SendOptions {
 	dotfiles?: 'allow' | 'deny' | 'ignore' // default: 'ignore'
 
 	immutable?: boolean
+
+	weakEtag?: boolean // use weak mtime-based etag instead of strong content-based etag (enables streaming and range requests)
+	// service like GAE reset mtime to Tue, 01 Jan 1980 00:00:01 GMT (Unix timestamp 315532801), so we enable strong tag by default
 
 	end?: number
 	// extensions?: string[] | string | boolean // disable extensions option
@@ -98,6 +101,7 @@ export async function sendFileTrusted(
 		disableAcceptRanges, disableLastModified, disableEtag,
 		disableCacheControl, maxAge = 60 * 60 * 24 * 365 * 1000, // 1 year
 		immutable,
+		weakEtag,
 	}: SendOptions | undefined = {},
 ) {
 	const fileStat = await stat(pathname)
@@ -112,14 +116,15 @@ export async function sendFileTrusted(
 
 	if (fileStat.isDirectory()) throw new Error('Forbidden: directory access is not allowed')
 
-	// do send
-	const opts = {}
-
 	if (res.headersSent) return
+
+	// Load file into buffer for strong ETag calculation
+	let fileBuffer: Buffer | undefined
+	if (!weakEtag) fileBuffer = await readFile(pathname)
 
 	// #region set header fields
 
-	if (!disableAcceptRanges && !res.getHeader('Accept-Ranges')) res.setHeader('Accept-Ranges', 'bytes')
+	if (!disableAcceptRanges && weakEtag && !res.getHeader('Accept-Ranges')) res.setHeader('Accept-Ranges', 'bytes')
 
 	if (!disableCacheControl && !res.getHeader('Cache-Control')) res.setHeader('Cache-Control', [`public, max-age=${Math.floor(maxAge / 1000)}`,
 		immutable && 'immutable',
@@ -127,7 +132,7 @@ export async function sendFileTrusted(
 
 	if (!disableLastModified && !res.getHeader('Last-Modified')) res.setHeader('Last-Modified', fileStat.mtime.toUTCString())
 
-	if (!disableEtag && !res.getHeader('ETag')) res.setHeader('ETag', statTag(fileStat))
+	if (!disableEtag && !res.getHeader('ETag')) res.setHeader('ETag', weakEtag ? statTag(fileStat) : entityTag(fileBuffer!, false))
 	// #endregion
 
 	// content-type
@@ -147,11 +152,13 @@ export async function sendFileTrusted(
 			) throw new Error('Precondition Failed: request headers do not match the response')
 		}
 
-		// if-unmodified-since
-		const unmodifiedSince = parseHttpDate(req.headers['if-unmodified-since'])
-		if (!isNaN(unmodifiedSince)) {
-			const lastModified = parseHttpDate(res.getHeader('Last-Modified'))
-			if (isNaN(lastModified) || lastModified > unmodifiedSince) throw new Error('Precondition Failed: resource has been modified since the specified date')
+		// if-unmodified-since (ignore when using strong etag since mtime may be unreliable)
+		if (weakEtag) {
+			const unmodifiedSince = parseHttpDate(req.headers['if-unmodified-since'])
+			if (!isNaN(unmodifiedSince)) {
+				const lastModified = parseHttpDate(res.getHeader('Last-Modified'))
+				if (isNaN(lastModified) || lastModified > unmodifiedSince) throw new Error('Precondition Failed: resource has been modified since the specified date')
+			}
 		}
 		// #endregion
 
@@ -161,7 +168,8 @@ export async function sendFileTrusted(
 				res.statusCode === 304)
 			&& fresh(req.headers, {
 				etag: res.getHeader('ETag'),
-				'last-modified': res.getHeader('Last-Modified')
+				// Only use last-modified for freshness check when using weakEtag
+				'last-modified': weakEtag ? res.getHeader('Last-Modified') : undefined
 			})
 		) {
 			// removeContentHeaderFields
@@ -183,36 +191,38 @@ export async function sendFileTrusted(
 		if (len > bytes) len = bytes
 	}
 
-	// Range support
-	let ranges = req.headers.range
-	if (!disableAcceptRanges && BYTES_RANGE_REGEXP.test(ranges)) {
-		// parse
-		ranges = parseRange(len, ranges, {combine: true})
+	// Range support (only available when using weakEtag)
+	if (weakEtag) {
+		let ranges = req.headers.range
+		if (!disableAcceptRanges && BYTES_RANGE_REGEXP.test(ranges)) {
+			// parse
+			ranges = parseRange(len, ranges, {combine: true})
 
-		// If-Range support
-		if (!isRangeFresh(req, res)) ranges = -2
+			// If-Range support
+			if (!isRangeFresh(req, res)) ranges = -2
 
-		// unsatisfiable
-		if (ranges === -1) {
-			// Content-Range
-			res.setHeader('Content-Range', contentRange('bytes', len))
+			// unsatisfiable
+			if (ranges === -1) {
+				// Content-Range
+				res.setHeader('Content-Range', contentRange('bytes', len))
 
-			// 416 Requested Range Not Satisfiable
-			throw new Error('Requested Range Not Satisfiable: requested range is not satisfiable')
-			// return this.error(416, {
-			// 	headers: {'Content-Range': res.getHeader('Content-Range')}
-			// })
-		}
+				// 416 Requested Range Not Satisfiable
+				throw new Error('Requested Range Not Satisfiable: requested range is not satisfiable')
+				// return this.error(416, {
+				// 	headers: {'Content-Range': res.getHeader('Content-Range')}
+				// })
+			}
 
-		// valid (syntactically invalid/multiple ranges are treated as a regular response)
-		if (ranges !== -2 && ranges.length === 1) {
-			// Content-Range
-			res.statusCode = 206
-			res.setHeader('Content-Range', contentRange('bytes', len, ranges[0]))
+			// valid (syntactically invalid/multiple ranges are treated as a regular response)
+			if (ranges !== -2 && ranges.length === 1) {
+				// Content-Range
+				res.statusCode = 206
+				res.setHeader('Content-Range', contentRange('bytes', len, ranges[0]))
 
-			// adjust for requested range
-			start += ranges[0].start
-			len = ranges[0].end - ranges[0].start + 1
+				// adjust for requested range
+				start += ranges[0].start
+				len = ranges[0].end - ranges[0].start + 1
+			}
 		}
 	}
 
@@ -225,8 +235,14 @@ export async function sendFileTrusted(
 	// HEAD support
 	if (req.method === 'HEAD') return setEmpty()
 
-	// do stream
+	// Strong ETag path (default): send buffer directly
+	if (!weakEtag && fileBuffer) {
+		res.write(fileBuffer)
+		res.end()
+		return
+	}
 
+	// Weak ETag path: stream file
 	const stream = createReadStream(pathname, {start, end})
 	stream.pipe(res)
 

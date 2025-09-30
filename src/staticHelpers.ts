@@ -122,7 +122,7 @@ export async function sendFileTrusted(
 	let fileBuffer: Buffer | undefined
 	if (!weakEtag) fileBuffer = await readFile(pathname)
 
-	// #region set header fields
+	//region set header fields
 
 	if (!disableAcceptRanges && weakEtag && !res.getHeader('Accept-Ranges')) res.setHeader('Accept-Ranges', 'bytes')
 
@@ -133,7 +133,7 @@ export async function sendFileTrusted(
 	if (!disableLastModified && !res.getHeader('Last-Modified')) res.setHeader('Last-Modified', fileStat.mtime.toUTCString())
 
 	if (!disableEtag && !res.getHeader('ETag')) res.setHeader('ETag', weakEtag ? statTag(fileStat) : entityTag(fileBuffer!, false))
-	// #endregion
+	//endregion set header fields
 
 	// content-type
 	if (!res.getHeader('Content-Type')) res.setHeader('Content-Type', contentTypeForExtension(path.extname(pathname).slice(1)) || 'application/octet-stream')
@@ -141,7 +141,7 @@ export async function sendFileTrusted(
 	// conditional GET support
 	// isConditionalGET
 	if (req.headers['if-match'] || req.headers['if-unmodified-since'] || req.headers['if-none-match'] || req.headers['if-modified-since']) {
-		// #region isPreconditionFailure
+		//region isPreconditionFailure
 		// if-match
 		const match = req.headers['if-match']
 		if (match) {
@@ -160,7 +160,7 @@ export async function sendFileTrusted(
 				if (isNaN(lastModified) || lastModified > unmodifiedSince) throw new Error('Precondition Failed: resource has been modified since the specified date')
 			}
 		}
-		// #endregion
+		//endregion isPreconditionFailure
 
 		// isCachable
 		if (

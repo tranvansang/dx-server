@@ -108,6 +108,7 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 			// skip response. Some middleware may handle it outside the chain. For example, express middleware
 			return
 		case 'empty':
+			bufferOrStream = Buffer.from('', charset)
 			break
 		default:
 			if (!res.getHeader('content-type')) res.setHeader('content-type', 'text/plain')
@@ -119,33 +120,33 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 		if (res.writableFinished) {
 			// skipped: response is already finished
 		} else if (res.writableEnded) {
-			const defer = Promise.withResolvers()
-			res.addListener('finish', defer.resolve)
-			await defer.promise
+			// const defer = Promise.withResolvers()
+			// res.addListener('finish', defer.resolve)
+			// res.addListener('error', defer.reject)
+			// await defer.promise
 			// skipped: response is already ended
 			// chunk is not fully flushed yet
-		} else await promisify(res.end.bind(res))(undefined) // to be consistent, we end the response immediately
+		} else await promisify(res.end.bind(res))()
 	} else {
 		// https://github.com/expressjs/express/blob/980d881e3b023db079de60477a2588a91f046ca5/lib/response.js#L210
-		if (res.statusCode === 204) { // No Content
-			res.removeHeader('content-type')
-			res.removeHeader('content-length')
-			res.removeHeader('transfer-encoding')
-			// write nothing
-		}
-		if (res.statusCode === 205) { // reset content. Tell client to clear the form, etc.
-			res.setHeader('content-length', 0)
-			res.removeHeader('transfer-encoding')
-		} else if (req.method === 'HEAD' || type === 'empty') {
-			// write nothing
-		} else {
+		// if (res.statusCode === 204) { // No Content
+		// 	res.removeHeader('content-type')
+		// 	res.removeHeader('content-length')
+		// 	res.removeHeader('transfer-encoding')
+		// 	// write nothing
+		// }
+		// if (res.statusCode === 205) { // reset content. Tell client to clear the form, etc.
+		// 	res.setHeader('content-length', 0)
+		// 	res.removeHeader('transfer-encoding')
+		// } else
+		if (req.method !== 'HEAD') {
 			if (Buffer.isBuffer(bufferOrStream)) {
 				// support: 304 (etag), zipping, file etag and last modified
 				res.setHeader('content-length', bufferOrStream.length)
 
 				if (!disableEtag) {
 					const etag = entityTag(bufferOrStream)
-					const lastModified = res.getHeader('last-modified')
+					// const lastModified = res.getHeader('last-modified')
 
 					res.setHeader('ETag', etag)
 					if (isFreshETag(req, etag)) {
@@ -163,6 +164,6 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 			// we do not support content-encoding (gzip, deflate, br) and leave it to reverse proxy or CDN
 		}
 
-		await promisify(res.end.bind(res))(undefined) // some express middleware, such as express-session, requires explicitly passing chunk
+		await promisify(res.end.bind(res))()
 	}
 }

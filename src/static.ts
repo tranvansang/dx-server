@@ -1,5 +1,5 @@
 import {type Chainable, getReq, getRes, setHtml} from './dx.js'
-import {sendFileTrusted, type SendOptions} from './staticHelpers.js'
+import {sendFileTrusted, type TrustedSendOptions} from './staticHelpers.js'
 import {urlFromReq} from './bodyHelpers.js'
 import {IncomingMessage, ServerResponse} from 'node:http'
 import path from 'node:path'
@@ -8,7 +8,7 @@ const UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/
 
 export function chainStatic(
 	pattern: string,
-	{getPathname, ...options}: SendOptions & {
+	{getPathname, ...options}: TrustedSendOptions & {
 		getPathname?(matched: any): string // should keep the heading slash
 		// return URI-encoded pathname
 		// by default: get the full path
@@ -41,14 +41,14 @@ async function sendFile(
 	req: IncomingMessage,
 	res: ServerResponse,
 	pathname: string, // plain path, not URI-encoded
-	options?: SendOptions,
+	options?: TrustedSendOptions & {
+		dotfiles?: 'allow' | 'deny' | 'ignore' // default: 'ignore'
+		// extensions?: string[] | string | boolean // disable extensions option
+		// index?: string[] | string | boolean // disable index option
+		root?: string
+	},
 ) {
-	const {
-		root, dotfiles, start = 0, end,
-		disableAcceptRanges, disableLastModified, disableEtag,
-		disableCacheControl, maxAge = 60 * 60 * 24 * 365 * 1000, // 1 year
-		immutable,
-	} = options ?? {}
+	const {root, dotfiles, ...trustedSendOptions} = options ?? {}
 
 	// null byte(s)
 	if (pathname.includes('\0')) return setHtml('Invalid request', {status: 400})
@@ -91,5 +91,5 @@ async function sendFile(
 	// pathEndsWithSep
 	if (pathname[pathname.length - 1] === path.sep) return setHtml('Forbidden: directory access is not allowed', {status: 403})
 
-	return sendFileTrusted(req, res, pathname, options)
+	return sendFileTrusted(req, res, pathname, trustedSendOptions)
 }

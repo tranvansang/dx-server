@@ -2,7 +2,7 @@ import type {IncomingMessage, ServerResponse} from 'node:http'
 import {Readable} from 'node:stream'
 import {promisify} from 'node:util'
 import {entityTag, isFreshETag} from './vendors/etag.js'
-import {sendFileTrusted, type SendOptions} from './staticHelpers.js'
+import {sendFileTrusted, type TrustedSendOptions} from './staticHelpers.js'
 
 import './polyfillWithResolvers.js'
 
@@ -53,7 +53,7 @@ export type DxContext = {
 } | {
 	type: 'file'
 	data: string
-	options?: SendOptions
+	options?: TrustedSendOptions
 })
 
 export async function writeRes(req: IncomingMessage, res: ServerResponse, {type, data, charset, jsonBeautify, disableEtag, options}: DxContext) {

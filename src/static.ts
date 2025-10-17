@@ -9,9 +9,13 @@ const UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/
 export function chainStatic(
 	pattern: string,
 	{getPathname, ...options}: TrustedSendOptions & {
-		getPathname?(matched: any): string // should keep the heading slash
 		// return URI-encoded pathname
 		// by default: get the full path
+		getPathname?(matched: any): string // should keep the heading slash
+		dotfiles?: 'allow' | 'deny' | 'ignore' // default: 'ignore'
+		// extensions?: string[] | string | boolean // disable extensions option
+		// index?: string[] | string | boolean // disable index option
+		root?: string
 	}
 ): Chainable {
 	const urlPattern = new URLPattern({pathname: pattern})

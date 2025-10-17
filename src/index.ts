@@ -24,5 +24,6 @@ export {
 export {router} from './router.js'
 export {connectMiddlewares} from './connect.js'
 export {chainStatic} from './static.js'
+export {logJson, default as logger} from './logger.js'
 
 export default dxServer

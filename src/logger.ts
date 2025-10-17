@@ -2,7 +2,7 @@ import {getReq, getRes} from './dx.js'
 import {hrtime} from 'node:process'
 
 export function logJson(json: any) {
-	console.log(process.env.NODE_ENV === 'production' ? JSON.stringify(json) : JSON.stringify(json, null, 2))
+	console.log(JSON.stringify(json))
 }
 
 let requestCount = 0

@@ -11,8 +11,13 @@ import {onFinished} from './vendors/onFinished.js'
 import {promisify} from 'node:util'
 
 const BYTES_RANGE_REGEXP = /^ *bytes=/
+const UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/
 
-export interface TrustedSendOptions {
+export interface SendFileOptions {
+	allowDotfiles?: boolean
+	// extensions?: string[] | string | boolean // disable extensions option
+	// index?: string[] | string | boolean // disable index option
+	root?: string
 	disableAcceptRanges?: boolean
 	disableLastModified?: boolean
 	// use weak mtime-based etag instead of strong content-based etag (enables streaming and range requests)
@@ -32,6 +37,7 @@ export async function sendFileTrusted(
 	res: ServerResponse,
 	pathname: string, // plain path, not URI-encoded
 	{
+		root, allowDotfiles,
 		start = 0, end,
 		disableAcceptRanges,
 		disableLastModified,
@@ -39,8 +45,41 @@ export async function sendFileTrusted(
 		disableCacheControl,
 		maxAge = 60 * 60 * 24 * 365 * 1000, // 1 year
 		immutable,
-	}: TrustedSendOptions | undefined = {},
+	}: SendFileOptions = {},
 ) {
+	// null byte(s)
+	if (pathname.includes('\0')) throw new Error('Forbidden')
+
+	let parts: string[]
+	if (root) {
+		// normalize
+		pathname = path.normalize(`.${path.sep}${pathname}`)
+
+		// malicious path
+		if (UP_PATH_REGEXP.test(pathname)) throw new Error('Forbidden')
+
+		// explode path parts
+		parts = pathname.split(path.sep)
+
+		// join / normalize from optional root dir
+		pathname = path.normalize(path.join(root, pathname))
+	} else {
+		// malicious path
+		if (UP_PATH_REGEXP.test(pathname)) throw new Error('Forbidden')
+
+		// explode path parts
+		parts = path.normalize(pathname).split(path.sep)
+
+		// join / normalize from optional root dir
+		pathname = path.resolve(pathname)
+	}
+
+	// dotfile handling
+	if (parts.some(part => part.length > 1 && part[0] === '.') && !allowDotfiles) throw new Error('Forbidden: dotfiles are not allowed')
+
+	// pathEndsWithSep
+	if (pathname[pathname.length - 1] === path.sep) throw new Error('Forbidden: directory access is not allowed')
+
 	const fileStat = await stat(pathname)
 	// not found, check extensions
 	// if (err.code === 'ENOENT' && !path.extname(pathname) && !pathEndsWithSep) throw err

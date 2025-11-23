@@ -226,17 +226,10 @@ const serverChain = chain(
 )
 
 const tcpServer = new Server()
-  .on('request', async (req, res) => {
-    try {
-      await chain(
-        dxServer(req, res, {jsonBeautify: process.env.NODE_ENV !== 'production'}), // basic dx-server context
-        serverChain,
-      )()
-    } catch (e) {
-      console.error(e)
-      res.end()
-    }
-  })
+  .on('request', (req, res) => chain(
+    dxServer(req, res), // basic dx-server context
+    serverChain,
+  )())
 
 await promisify(tcpServer.listen.bind(tcpServer))(3000)
 console.log('server is listening at 3000')

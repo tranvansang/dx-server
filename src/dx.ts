@@ -2,7 +2,7 @@ import {Readable} from 'node:stream'
 import type {IncomingMessage, ServerResponse} from 'node:http'
 import {AsyncLocalStorage} from 'node:async_hooks'
 import {type DxContext, writeRes} from './dxHelpers.js'
-import type {TrustedSendOptions} from './staticHelpers.js'
+import type {SendFileOptions} from './staticHelpers.js'
 
 export interface Chainable<
 	P extends any[] = any[],
@@ -111,7 +111,7 @@ export function setHtml(html: string, opts: { status?: number } = {}) {
 	dx.type = 'html'
 }
 
-export function setFile(filePath: string, options?: TrustedSendOptions) {
+export function setFile(filePath: string, options?: SendFileOptions) {
 	const dx = dxContext.value
 	dx.data = filePath
 	dx.type = 'file'

@@ -76,7 +76,8 @@ export function parseRange (size, str, options) {
 function combineRanges (ranges) {
 	const ordered = ranges.map(mapWithIndex).sort(sortByRangeStart)
 
-	for (let j = 0, i = 1; i < ordered.length; i++) {
+	let j = 0
+	for (let i = 1; i < ordered.length; i++) {
 		const range = ordered[i]
 		const current = ordered[j]
 

@@ -8,7 +8,16 @@
  * @public
  */
 
-export function parseRange (size, str, options) {
+interface Range {
+	start: number
+	end: number
+}
+interface IndexedRange extends Range {
+	index: number
+}
+export type Ranges = Range[] & {type: string}
+
+export function parseRange(size: number, str: string | undefined, options?: {combine?: boolean}): Ranges | -1 | -2 {
 	if (typeof str !== 'string') {
 		throw new TypeError('argument str must be a string')
 	}
@@ -21,7 +30,7 @@ export function parseRange (size, str, options) {
 
 	// split the range string
 	const arr = str.slice(index + 1).split(',')
-	const ranges = []
+	const ranges = [] as unknown as Ranges
 
 	// add ranges type
 	ranges.type = str.slice(0, index)
@@ -73,7 +82,7 @@ export function parseRange (size, str, options) {
  * @private
  */
 
-function combineRanges (ranges) {
+function combineRanges(ranges: Ranges) {
 	const ordered = ranges.map(mapWithIndex).sort(sortByRangeStart)
 
 	let j = 0
@@ -95,7 +104,7 @@ function combineRanges (ranges) {
 	ordered.length = j + 1
 
 	// generate combined range
-	const combined = ordered.sort(sortByRangeIndex).map(mapWithoutIndex)
+	const combined = ordered.sort(sortByRangeIndex).map(mapWithoutIndex) as unknown as Ranges
 
 	// copy ranges type
 	combined.type = ranges.type
@@ -108,7 +117,7 @@ function combineRanges (ranges) {
  * @private
  */
 
-function mapWithIndex (range, index) {
+function mapWithIndex(range: Range, index: number) {
 	return {
 		start: range.start,
 		end: range.end,
@@ -121,7 +130,7 @@ function mapWithIndex (range, index) {
  * @private
  */
 
-function mapWithoutIndex (range) {
+function mapWithoutIndex(range: IndexedRange) {
 	return {
 		start: range.start,
 		end: range.end
@@ -133,7 +142,7 @@ function mapWithoutIndex (range) {
  * @private
  */
 
-function sortByRangeIndex (a, b) {
+function sortByRangeIndex(a: IndexedRange, b: IndexedRange) {
 	return a.index - b.index
 }
 
@@ -142,6 +151,6 @@ function sortByRangeIndex (a, b) {
  * @private
  */
 
-function sortByRangeStart (a, b) {
+function sortByRangeStart(a: IndexedRange, b: IndexedRange) {
 	return a.start - b.start
 }

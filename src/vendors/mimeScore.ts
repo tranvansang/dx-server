@@ -37,7 +37,7 @@ const TYPE_SCORES = {
  * Get each component of the score for a mime type.  The sum of these is the
  * total score.  The higher the score, the more "official" the type.
  */
-export function mimeScore(mimeType, source = 'default') {
+export function mimeScore(mimeType: string, source = 'default') {
 	if (mimeType === 'application/octet-stream') {
 		return 0
 	}
@@ -46,9 +46,9 @@ export function mimeScore(mimeType, source = 'default') {
 
 	const facet = subtype.replace(/(\.|x-).*/, '$1')
 
-	const facetScore = FACET_SCORES[facet] || FACET_SCORES.default
-	const sourceScore = SOURCE_SCORES[source] || SOURCE_SCORES.default
-	const typeScore = TYPE_SCORES[type] || TYPE_SCORES.default
+	const facetScore = FACET_SCORES[facet as keyof typeof FACET_SCORES] || FACET_SCORES.default
+	const sourceScore = SOURCE_SCORES[source as keyof typeof SOURCE_SCORES] || SOURCE_SCORES.default
+	const typeScore = TYPE_SCORES[type as keyof typeof TYPE_SCORES] || TYPE_SCORES.default
 
 	// All else being equal prefer shorter types
 	const lengthScore = 1 - mimeType.length / 100

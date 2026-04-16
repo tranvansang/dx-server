@@ -54,9 +54,9 @@ type Router = {
 function makeRouter(
 	method: string | undefined, // undefined means any method
 	routes: [pattern: string, route: Route][],
-	{prefix = '', ...options}: RouterOptions = {},
+	{prefix = ''}: RouterOptions = {},
 ): Chainable {
-	const routeWithUrlPatterns = routes.map(([pattern, handler]) => [new URLPattern({pathname: `${prefix}${pattern}`}), handler])
+	const routeWithUrlPatterns = routes.map(([pattern, handler]) => [new URLPattern({pathname: `${prefix}${pattern}`}), handler] as const)
 	return next => {
 		const req = getReq()
 		if (method !== undefined && req.method !== method.toUpperCase()) return next()
@@ -76,17 +76,17 @@ function makeRouter(
 		return next()
 	}
 }
-export const router: Router = {
-	method(method, ...params) {
+export const router = {
+	method(method: string, ...params: any[]) {
 		return typeof params[0] === 'string'
 			? makeRouter(method, [[params[0], params[1]]], params[2])
 			: makeRouter(method, Object.entries(params[0]), params[1])
 	},
-	all(...params) {
+	all(...params: any[]) {
 		return typeof params[0] === 'string'
 			? makeRouter(undefined, [[params[0], params[1]]], params[2])
 			: makeRouter(undefined, Object.entries(params[0]), params[1])
 	}
-}
+} as Router
 
-for (const method of allMethods) router[method] = router.method.bind(router, method)
+for (const method of allMethods) (router as any)[method] = router.method.bind(router, method)

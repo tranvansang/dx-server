@@ -6,10 +6,10 @@
 /* istanbul ignore next */
 import {AsyncResource} from 'node:async_hooks'
 
-const defer = typeof setImmediate === 'function'
+const defer: (fn: (...a: any[]) => void, ...args: any[]) => void = typeof setImmediate === 'function'
 	? setImmediate
-	: function (fn) {
-		process.nextTick(fn.bind.apply(fn, arguments))
+	: function (this: any, fn: (...a: any[]) => void) {
+		process.nextTick(fn.bind.apply(fn, arguments as any))
 	}
 
 /**
@@ -22,14 +22,14 @@ const defer = typeof setImmediate === 'function'
  * @public
  */
 
-export function onFinished (msg, listener) {
-	if (isFinished(msg) !== false) {
+export function onFinished<T>(msg: T, listener: (err: any, msg?: any) => void) {
+	if (isFinished(msg as any) !== false) {
 		defer(listener, null, msg)
 		return msg
 	}
 
 	// attach the listener to the message
-	attachListener(msg, wrap(listener))
+	attachListener(msg as any, wrap(listener))
 
 	return msg
 }
@@ -42,7 +42,7 @@ export function onFinished (msg, listener) {
  * @public
  */
 
-function isFinished (msg) {
+function isFinished(msg: any) {
 	const socket = msg.socket
 
 	if (typeof msg.finished === 'boolean') {
@@ -67,12 +67,12 @@ function isFinished (msg) {
  * @private
  */
 
-function attachFinishedListener (msg, callback) {
-	let eeMsg
-	let eeSocket
+function attachFinishedListener(msg: any, callback: (error?: any) => void) {
+	let eeMsg: any
+	let eeSocket: any
 	let finished = false
 
-	function onFinish (error) {
+	function onFinish(error: any) {
 		eeMsg.cancel()
 		eeSocket.cancel()
 
@@ -83,7 +83,7 @@ function attachFinishedListener (msg, callback) {
 	// finished on first message event
 	eeMsg = eeSocket = first([[msg, 'end', 'finish']], onFinish)
 
-	function onSocket (socket) {
+	function onSocket(socket: any) {
 		// remove listener
 		msg.removeListener('socket', onSocket)
 
@@ -117,16 +117,21 @@ function attachFinishedListener (msg, callback) {
  * @private
  */
 
-function attachListener (msg, listener) {
-	let attached = msg.__onFinished
+interface AttachedListener {
+	(err: any, msg?: any): void
+	queue: Array<(err: any, msg?: any) => void> | null
+}
+
+function attachListener(msg: any, listener: (err: any, msg?: any) => void) {
+	let attached: AttachedListener | undefined = msg.__onFinished
 
 	// create a private single listener with queue
 	if (!attached || !attached.queue) {
 		attached = msg.__onFinished = createListener(msg)
-		attachFinishedListener(msg, attached)
+		attachFinishedListener(msg, attached!)
 	}
 
-	attached.queue.push(listener)
+	attached!.queue!.push(listener)
 }
 
 /**
@@ -137,8 +142,8 @@ function attachListener (msg, listener) {
  * @private
  */
 
-function createListener (msg) {
-	function listener (err) {
+function createListener(msg: any) {
+	const listener = ((err: any) => {
 		if (msg.__onFinished === listener) msg.__onFinished = null
 		if (!listener.queue) return
 
@@ -148,7 +153,7 @@ function createListener (msg) {
 		for (let i = 0; i < queue.length; i++) {
 			queue[i](err, msg)
 		}
-	}
+	}) as AttachedListener
 
 	listener.queue = []
 
@@ -164,13 +169,13 @@ function createListener (msg) {
  */
 
 // istanbul ignore next: node.js 0.8 patch
-function patchAssignSocket (res, callback) {
+function patchAssignSocket(res: any, callback: (socket: any) => void) {
 	const assignSocket = res.assignSocket
 
 	if (typeof assignSocket !== 'function') return
 
 	// res.on('socket', callback) is broken in 0.8
-	res.assignSocket = function _assignSocket (socket) {
+	res.assignSocket = function _assignSocket(this: any, socket: any) {
 		assignSocket.call(this, socket)
 		callback(socket)
 	}
@@ -181,7 +186,7 @@ function patchAssignSocket (res, callback) {
  * @private
  */
 
-function tryRequireAsyncHooks () {
+function tryRequireAsyncHooks() {
 	try {
 		return require('async_hooks')
 	} catch (e) {
@@ -195,11 +200,9 @@ function tryRequireAsyncHooks () {
  * @private
  */
 
-function wrap (fn) {
-	let res
-
+function wrap<F extends (...args: any[]) => any>(fn: F) {
 	// create anonymous resource
-	res = new AsyncResource(fn.name || 'bound-anonymous-fn')
+	const res = new AsyncResource(fn.name || 'bound-anonymous-fn')
 
 	// incompatible node.js
 	if (!res || !res.runInAsyncScope) {
@@ -207,7 +210,7 @@ function wrap (fn) {
 	}
 
 	// return bound function
-	return res.runInAsyncScope.bind(res, fn, null)
+	return res.runInAsyncScope.bind(res, fn, null) as unknown as F
 }
 
 /**
@@ -218,12 +221,12 @@ function wrap (fn) {
  * @public
  */
 
-function first (stuff, done) {
+function first(stuff: any[][], done: (...args: any[]) => void) {
 	if (!Array.isArray(stuff)) {
 		throw new TypeError('arg must be an array of [ee, events...] arrays')
 	}
 
-	const cleanups = []
+	const cleanups: {ee: any, event: string, fn: (...args: any[]) => void}[] = []
 
 	for (let i = 0; i < stuff.length; i++) {
 		const arr = stuff[i]
@@ -249,21 +252,23 @@ function first (stuff, done) {
 		}
 	}
 
-	function callback () {
+	function callback(this: any, ...args: any[]) {
 		cleanup()
-		done.apply(null, arguments)
+		done.apply(null, args)
 	}
 
-	function cleanup () {
-		let x
+	function cleanup() {
 		for (let i = 0; i < cleanups.length; i++) {
-			x = cleanups[i]
+			const x = cleanups[i]
 			x.ee.removeListener(x.event, x.fn)
 		}
 	}
 
-	function thunk (fn) {
+	const thunk = function thunk(fn: (...args: any[]) => void) {
 		done = fn
+	} as {
+		(fn: (...args: any[]) => void): void
+		cancel: () => void
 	}
 
 	thunk.cancel = cleanup
@@ -276,8 +281,8 @@ function first (stuff, done) {
  * @private
  */
 
-function listener (event, done) {
-	return function onevent (arg1) {
+function listener(event: string, done: (...args: any[]) => void) {
+	return function onevent(this: any, arg1: any) {
 		const args = new Array(arguments.length)
 		const ee = this
 		const err = event === 'error'

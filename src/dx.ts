@@ -5,16 +5,15 @@ import {type DxContext, writeRes} from './dxHelpers.js'
 import type {SendFileOptions} from './staticHelpers.js'
 
 export interface Chainable<
-	P extends any[] = any[],
 	R = any,
 	Next = (...np: any[]) => any,
 > {
-	(next: Next, ...p: P): R
+	(next: Next): R
 }
 
 export interface Context<
 	T,
-	Params extends any[],
+	Params extends any[] = any[],
 	R = any,
 	Next = (...np: any[]) => any,
 > {
@@ -22,25 +21,25 @@ export interface Context<
 	get(req: IncomingMessage): T
 	set(req: IncomingMessage, value: T): void
 	(...params: Params): Promise<T>
-	chain(...params: Params): Chainable<Params, R, Next>
+	chain(...params: Params): Chainable<R, Next>
 }
 export function makeDxContext<
 	T,
-	Params extends any[],
+	Params extends any[] = any[],
 	R = any,
 	Next = (...np: any[]) => any,
 >(maker: (...params: Params) => T | Promise<T>): Context<T, Params, R, Next> {
 	const promiseMap = new WeakMap<IncomingMessage, Promise<T>>()
 	const valueMap = new WeakMap<IncomingMessage, T>()
-	const context: Context<T, Params, R, Next> = (...params: Params) => {
+	const context = ((...params: Params) => {
 		const req = getReq()
 		if (!promiseMap.has(req)) promiseMap.set(req, (async () => {
 			const value = await maker(...params)
 			valueMap.set(req, value)
 			return value
 		})())
-		return promiseMap.get(req)
-	}
+		return promiseMap.get(req)!
+	}) as Context<T, Params, R, Next>
 	Object.defineProperty(context, 'value', {
 		get() {return valueMap.get(getReq())},
 		set(value) {
@@ -49,15 +48,15 @@ export function makeDxContext<
 			valueMap.set(req, value)
 		}
 	})
-	context.chain = (...params) => async next => {
+	context.chain = ((...params: Params) => (async (next: Next) => {
 		await context(...params)
-		return next()
-	}
+		return (next as (...args: any[]) => any)()
+	})) as Context<T, Params, R, Next>['chain']
 	context.set = (req, value) => {
 		promiseMap.set(req, Promise.resolve(value))
 		valueMap.set(req, value)
 	}
-	context.get = req => valueMap.get(req)
+	context.get = req => valueMap.get(req) as T
 	return context
 }
 
@@ -65,7 +64,7 @@ const requestStorage = new AsyncLocalStorage<{
 	req: IncomingMessage
 	res: ServerResponse
 }>()
-const dxContext = makeDxContext<DxContext>(options => ({...options}))
+const dxContext = makeDxContext<DxContext>(options => ({...options} as DxContext))
 export function dxServer(
 	req: IncomingMessage,
 	res: ServerResponse,
@@ -75,7 +74,7 @@ export function dxServer(
 	} = {}
 ): Chainable {
 	return async next => {
-		dxContext.set(req, {...options})
+		dxContext.set(req, {...options} as DxContext)
 		const result = await requestStorage.run({req, res}, next)
 		await writeRes(req, res, dxContext.get(req))
 		return result
@@ -172,4 +171,3 @@ export function setRedirect(url: string, status: 301 | 302) {
 // https://github.com/jshttp/content-disposition/blob/1037e24e4790273da96645ad250061f39e77968c/index.js#L186
 // because in most applications, users can specify a simple filename which usually doesn't need to be validated.
 // we leave setDownload() implementation for users, for now.
-

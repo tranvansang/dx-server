@@ -11,48 +11,48 @@ export type DxContext = {
 } & (
 	| {
 		type: 'empty'
-	data: undefined
-	options: undefined
-}
+		data: undefined
+		options: undefined
+	}
 	| {
-	type: 'text'
-	data: string
-	options: undefined
-}
+		type: 'text'
+		data: string
+		options: undefined
+	}
 	| {
-	type: 'html'
-	data: string
-	options: undefined
-}
+		type: 'html'
+		data: string
+		options: undefined
+	}
 	| {
-	type: 'buffer'
-	data: Buffer
-	options: undefined
-}
+		type: 'buffer'
+		data: Buffer
+		options: undefined
+	}
 	| {
-	type: 'json'
-	data: any
-	options: undefined
-}
+		type: 'json'
+		data: any
+		options: undefined
+	}
 	| {
-	type: 'redirect'
-	data: string
-	options: undefined
-}
+		type: 'redirect'
+		data: string
+		options: undefined
+	}
 	| {
-	type: 'nodeStream'
-	data: Readable
-	options: undefined
-}
+		type: 'nodeStream'
+		data: Readable
+		options: undefined
+	}
 	| {
-	type: 'webStream'
-	data: ReadableStream
-	options: undefined
-} | {
-	type: 'file'
-	data: string
-	options?: SendFileOptions
-})
+		type: 'webStream'
+		data: ReadableStream
+		options: undefined
+	} | {
+		type: 'file'
+		data: string
+		options?: SendFileOptions
+	})
 
 export async function writeRes(req: IncomingMessage, res: ServerResponse, {type, data, charset, jsonBeautify, disableEtag, options}: DxContext) {
 	const setContentType = (contentType: string) => {

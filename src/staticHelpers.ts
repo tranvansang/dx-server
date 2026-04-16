@@ -233,7 +233,7 @@ function isRangeFresh (req: IncomingMessage, res: ServerResponse) {
 	// if-range as etag
 	if (ifRange.indexOf('"') !== -1) {
 		const etag = res.getHeader('ETag')
-		return etag && ifRange.includes(etag)
+		return etag && ifRange.includes(etag as any)
 	}
 
 	// if-range as modified date
@@ -241,6 +241,6 @@ function isRangeFresh (req: IncomingMessage, res: ServerResponse) {
 	return parseHttpDate(lastModified) <= parseHttpDate(ifRange)
 }
 
-function contentRange (type, size, range) {
+function contentRange(type: string, size: number, range?: {start: number, end: number}) {
 	return `${type} ${range ? range.start + '-' + range.end : '*'}/${size}`
 }

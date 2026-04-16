@@ -9,7 +9,7 @@ const CACHE_CONTROL_NO_CACHE_REGEXP = /(?:^|,)\s*?no-cache\s*?(?:,|$)/
  * @public
  */
 
-export function fresh(reqHeaders, resHeaders) {
+export function fresh(reqHeaders: Record<string, any>, resHeaders: Record<string, any>) {
 	// fields
 	const modifiedSince = reqHeaders['if-modified-since']
 	const noneMatch = reqHeaders['if-none-match']
@@ -69,7 +69,7 @@ export function fresh(reqHeaders, resHeaders) {
  * @private
  */
 
-export function parseHttpDate(date) {
+export function parseHttpDate(date: any) {
 	const timestamp = date && Date.parse(date)
 
 	// istanbul ignore next: guard against date.js Date.parse patching
@@ -83,9 +83,9 @@ export function parseHttpDate(date) {
  * @private
  */
 
-export function parseTokenList(str) {
+export function parseTokenList(str: string) {
 	let end = 0
-	const list = []
+	const list: string[] = []
 	let start = 0
 
 	// gather tokens

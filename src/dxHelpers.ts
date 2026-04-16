@@ -4,8 +4,6 @@ import {promisify} from 'node:util'
 import {entityTag, isFreshETag} from './vendors/etag.js'
 import {sendFileTrusted, type SendFileOptions} from './staticHelpers.js'
 
-import './polyfillWithResolvers.js'
-
 export type DxContext = {
 	charset?: BufferEncoding // not for redirect
 	jsonBeautify?: boolean // json only

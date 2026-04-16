@@ -1,6 +1,3 @@
-.idea
-/cjs/
-/esm/
 node_modules/
-CLAUDE.md
 /samples/
+/lib/

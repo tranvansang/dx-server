@@ -1,5 +1,4 @@
 import {IncomingMessage, ServerResponse} from 'node:http'
-import './polyfillWithResolvers.js'
 import path from 'node:path'
 import {stat} from 'node:fs/promises'
 import {entityTagPath, statTag} from './vendors/etag.js'

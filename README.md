@@ -10,7 +10,7 @@ A modern, unopinionated, and performant Node.js server framework built on AsyncL
 - 🎯 **Elegant API interface** - No need to pass req/res objects through middleware chains
 - 🔗 **Chainable middleware** - Elegant middleware composition with [jchain](https://www.npmjs.com/package/jchain)
 - 🚀 **Context-based architecture** - Access request/response from anywhere using AsyncLocalStorage
-- 🔄 **Express compatible** - Use existing Express middleware and applications
+- 🔄 **Express compatible** - Bridge Express/Connect middleware with a small adapter
 - 📦 **Zero dependencies** - No runtime dependencies, all functionality built-in
 - 🛡️ **Built-in body parsing** - JSON, text, URL-encoded, and raw body parsing with size limits
 - 🗂️ **Static file serving** - Efficient static file handling with ETag, Range, and Last-Modified support
@@ -127,9 +127,7 @@ new Server().on('request', (req, res) => chain(
 )()).listen(3000)
 ```
 
-### Production-Ready Server with Express Integration
-
-This example requires: `npm install express morgan helmet cors`
+### Production-Ready Server
 
 ```javascript
 import {Server} from 'node:http'
@@ -139,11 +137,9 @@ import dxServer, {
   getReq, getRes,
   getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery,
   setHtml, setJson, setText, setEmpty, setBuffer, setRedirect, setNodeStream, setWebStream, setFile,
-  router, connectMiddlewares, chainStatic, makeDxContext
+  router, chainStatic, makeDxContext
 } from 'dx-server'
-import {expressApp} from 'dx-server/express'
-import express from 'express'
-import morgan from 'morgan'
+import {resolve} from 'node:path'
 
 // it is best practice to create custom error class for non-system error
 class ServerError extends Error {
@@ -166,7 +162,6 @@ function requireAuth() {
 
 const serverChain = chain(
   next => {
-    // this is the difference between express and dx-server
     // req, res can be accessed from anywhere via context which uses NodeJS's AsyncLocalStorage under the hood
     getRes().setHeader('Cache-Control', 'no-cache')
     return next() // must return or await
@@ -182,15 +177,7 @@ const serverChain = chain(
       }
     }
   },
-  connectMiddlewares(
-    morgan('common'),
-    // cors(),
-  ),
-  await expressApp(app => {// any express feature can be used. This requires express installed, with for e.g., `yarn add express`
-    app.set('trust proxy', true)
-    if (process.env.NODE_ENV !== 'production') app.set('json spaces', 2)
-    app.use('/public', express.static('public'))
-  }),
+  chainStatic('/public/*', {root: resolve(import.meta.dirname, 'public')}),
   authContext.chain(), // chain context will set the context value to authContext.value in every request
   router.post('/api/*', async ({next}) => {// example of catching error for all /api/* routes
     try {
@@ -318,11 +305,11 @@ import dxServer, {
   setNodeStream, setWebStream, setFile,
   
   // Utilities
-  router, connectMiddlewares, chainStatic, makeDxContext
+  router, chainStatic, makeDxContext,
+  
+  // Logging
+  logger, logJson,
 } from 'dx-server'
-
-// Express integration (requires express installed)
-import {expressApp, expressRouter} from 'dx-server/express'
 
 // Low-level helpers
 import {
@@ -384,7 +371,6 @@ Options:
   ```
 
 #### Middleware Utilities
-- **`connectMiddlewares(...middlewares)`** - Use Connect/Express middleware
 - **`chainStatic(pattern, options)`** - Serve static files
   ```javascript
   chainStatic('/public/*', {
@@ -453,30 +439,38 @@ router.get({
 
 ### Express Integration
 
-dx-server seamlessly integrates with Express applications and middleware:
+dx-server does not ship a built-in Express adapter, but Express apps and Connect-style middleware slot into a chain with a one-line adapter. A Connect/Express middleware has the signature `(req, res, next) => void`; jchain expects `next => void | Promise`. Bridge them inline:
 
 ```javascript
-import {expressApp, expressRouter} from 'dx-server/express'
+import chain from 'jchain'
+import {getReq, getRes} from 'dx-server'
 import express from 'express'
-import cors from 'cors'
+import morgan from 'morgan'
 import helmet from 'helmet'
+import cors from 'cors'
+
+// Adapt one Connect/Express-style middleware (or a full Express app, which has the
+// same (req, res, next) shape) into a jchain step. Always calls next() so the rest of
+// the chain runs — dx-server handles the case where the response is already ended.
+const fromConnect = mw => next => new Promise((resolve, reject) => {
+  mw(getReq(), getRes(), err => {
+    if (err) return reject(err)
+    next().then(resolve, reject)
+  })
+})
+
+const app = express()
+app.set('trust proxy', true)
+app.use('/public', express.static('public'))
+app.get('/legacy', (req, res) => res.json({message: 'Express route'}))
 
 chain(
-  // Use entire Express app
-  await expressApp(app => {
-    app.set('trust proxy', true)
-    app.set('json spaces', 2)
-    app.use(helmet())
-    app.use('/static', express.static('public'))
-  }),
-  
-  // Or use Express router
-  expressRouter(router => {
-    router.use(cors())
-    router.get('/legacy', (req, res) => {
-      res.json({message: 'Express route'})
-    })
-  })
+  fromConnect(app), // mount the entire Express app first
+  fromConnect(morgan('common')),
+  fromConnect(helmet()),
+  fromConnect(cors()),
+  // dx-server routes continue here
+  router.get('/', () => setHtml('ok')),
 )
 ```
 
@@ -560,20 +554,18 @@ router.post('/api/users', async () => {
 ```
 
 ### Security Headers
-Use security middleware:
+Use security middleware via the `fromConnect` adapter shown in [Express Integration](#express-integration):
 
 ```javascript
 import helmet from 'helmet'
 import cors from 'cors'
 
 chain(
-  connectMiddlewares(
-    helmet(),
-    cors({
-      origin: process.env.ALLOWED_ORIGINS?.split(','),
-      credentials: true
-    })
-  )
+  fromConnect(helmet()),
+  fromConnect(cors({
+    origin: process.env.ALLOWED_ORIGINS?.split(','),
+    credentials: true
+  })),
 )
 ```
 
@@ -611,16 +603,16 @@ server.on('upgrade', (request, socket, head) => {
 ```
 
 ### Rate Limiting
+Using the `fromConnect` adapter from [Express Integration](#express-integration):
+
 ```javascript
 import rateLimit from 'express-rate-limit'
 
 chain(
-  connectMiddlewares(
-    rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 100 // limit each IP to 100 requests per windowMs
-    })
-  )
+  fromConnect(rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // limit each IP to 100 requests per windowMs
+  })),
 )
 ```
 

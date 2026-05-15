@@ -81,33 +81,31 @@ new Server().on('request', (req, res) => chain(
 )()).listen(3000, () => console.log('server is listening at 3000'))
 ```
 
-### TypeScript Example
+### Custom Contexts
 
-```typescript
-import {Server} from 'node:http'
-import chain from 'jchain'
-import dxServer, {router, setJson, getJson} from 'dx-server'
+Create reusable context objects with `makeDxContext`:
 
-interface User {
-    id: number
-    name: string
-}
+```javascript
+import {makeDxContext, getReq} from 'dx-server'
 
-new Server().on('request', (req, res) => chain(
-  dxServer(req, res),
-  router.post({
-    async '/api/users'() {
-      const body = await getJson<{name: string}>()
-      if (!body?.name) {
-        setJson({error: 'Name required'}, {status: 400})
-        return
-      }
-      const user: User = {id: 1, name: body.name}
-      setJson(user, {status: 201})
+// Create auth context
+const authContext = makeDxContext(async () => {
+  const token = getReq().headers.authorization
+  if (!token) return null
+  return await validateToken(token) // Your validation logic
+})
+
+// Use in middleware
+chain(
+  authContext.chain(), // Initialize for all requests
+  next => {
+    if (!authContext.value) {
+      setJson({error: 'Unauthorized'}, {status: 401})
+      return
     }
-  }),
-  () => setJson({error: 'Not found'}, {status: 404})
-)()).listen(3000)
+    return next()
+  }
+)
 ```
 
 ### Static File Server

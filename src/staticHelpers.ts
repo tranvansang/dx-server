@@ -9,6 +9,13 @@ import {createReadStream} from 'node:fs'
 import {promisify} from 'node:util'
 import {pipeline} from 'node:stream/promises'
 
+export type HttpError = Error & {statusCode: number}
+function httpError(message: string, statusCode: number): HttpError {
+	const e = new Error(message) as HttpError
+	e.statusCode = statusCode
+	return e
+}
+
 const BYTES_RANGE_REGEXP = /^ *bytes=/
 const UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/
 
@@ -47,7 +54,7 @@ export async function sendFileTrusted(
 	}: SendFileOptions = {},
 ) {
 	// null byte(s)
-	if (pathname.includes('\0')) throw new Error('Forbidden')
+	if (pathname.includes('\0')) throw httpError('Forbidden', 403)
 
 	let parts: string[]
 	if (root) {
@@ -55,7 +62,7 @@ export async function sendFileTrusted(
 		pathname = path.normalize(`.${path.sep}${pathname}`)
 
 		// malicious path
-		if (UP_PATH_REGEXP.test(pathname)) throw new Error('Forbidden')
+		if (UP_PATH_REGEXP.test(pathname)) throw httpError('Forbidden', 403)
 
 		// explode path parts
 		parts = pathname.split(path.sep)
@@ -64,7 +71,7 @@ export async function sendFileTrusted(
 		pathname = path.normalize(path.join(root, pathname))
 	} else {
 		// malicious path
-		if (UP_PATH_REGEXP.test(pathname)) throw new Error('Forbidden')
+		if (UP_PATH_REGEXP.test(pathname)) throw httpError('Forbidden', 403)
 
 		// explode path parts
 		parts = path.normalize(pathname).split(path.sep)
@@ -74,10 +81,10 @@ export async function sendFileTrusted(
 	}
 
 	// dotfile handling
-	if (parts.some(part => part.length > 1 && part[0] === '.') && !allowDotfiles) throw new Error('Forbidden: dotfiles are not allowed')
+	if (parts.some(part => part.length > 1 && part[0] === '.') && !allowDotfiles) throw httpError('Forbidden: dotfiles are not allowed', 403)
 
 	// pathEndsWithSep
-	if (pathname[pathname.length - 1] === path.sep) throw new Error('Forbidden: directory access is not allowed')
+	if (pathname[pathname.length - 1] === path.sep) throw httpError('Forbidden: directory access is not allowed', 403)
 
 	const fileStat = await stat(pathname)
 	// not found, check extensions
@@ -89,7 +96,7 @@ export async function sendFileTrusted(
 	// 	default:
 	// }
 
-	if (fileStat.isDirectory()) throw new Error('Forbidden: directory access is not allowed')
+	if (fileStat.isDirectory()) throw httpError('Forbidden: directory access is not allowed', 403)
 
 	if (res.headersSent) return
 
@@ -123,7 +130,7 @@ export async function sendFileTrusted(
 			if (
 				!etag
 				|| (match !== '*' && parseTokenList(match).every(match => match !== etag && match !== 'W/' + etag && 'W/' + match !== etag))
-			) throw new Error('Precondition Failed: request headers do not match the response')
+			) throw httpError('Precondition Failed: request headers do not match the response', 412)
 		}
 
 		// if-unmodified-since (ignore when using strong etag since mtime may be unreliable)
@@ -131,7 +138,7 @@ export async function sendFileTrusted(
 			const unmodifiedSince = parseHttpDate(req.headers['if-unmodified-since'])
 			if (!isNaN(unmodifiedSince)) {
 				const lastModified = parseHttpDate(res.getHeader('Last-Modified'))
-				if (isNaN(lastModified) || lastModified > unmodifiedSince) throw new Error('Precondition Failed: resource has been modified since the specified date')
+				if (isNaN(lastModified) || lastModified > unmodifiedSince) throw httpError('Precondition Failed: resource has been modified since the specified date', 412)
 			}
 		}
 		//endregion isPreconditionFailure
@@ -179,7 +186,7 @@ export async function sendFileTrusted(
 			res.setHeader('Content-Range', contentRange('bytes', len))
 
 			// 416 Requested Range Not Satisfiable
-			throw new Error('Requested Range Not Satisfiable: requested range is not satisfiable')
+			throw httpError('Requested Range Not Satisfiable: requested range is not satisfiable', 416)
 			// return this.error(416, {
 			// 	headers: {'Content-Range': res.getHeader('Content-Range')}
 			// })

@@ -43,8 +43,10 @@ export async function sendFileTrusted(
 	res: ServerResponse,
 	pathname: string, // plain path, not URI-encoded
 	{
-		root, allowDotfiles,
-		start = 0, end,
+		root,
+		allowDotfiles,
+		start = 0,
+		end,
 		disableAcceptRanges,
 		disableLastModified,
 		etag = 'strong',
@@ -81,7 +83,8 @@ export async function sendFileTrusted(
 	}
 
 	// dotfile handling
-	if (parts.some(part => part.length > 1 && part[0] === '.') && !allowDotfiles) throw httpError('Forbidden: dotfiles are not allowed', 403)
+	if (parts.some(part => part.length > 1 && part[0] === '.') && !allowDotfiles)
+		throw httpError('Forbidden: dotfiles are not allowed', 403)
 
 	// pathEndsWithSep
 	if (pathname[pathname.length - 1] === path.sep) throw httpError('Forbidden: directory access is not allowed', 403)
@@ -104,33 +107,45 @@ export async function sendFileTrusted(
 
 	if (!disableAcceptRanges && !res.getHeader('Accept-Ranges')) res.setHeader('Accept-Ranges', 'bytes')
 
-	if (!disableCacheControl && !res.getHeader('Cache-Control')) res.setHeader('Cache-Control',
-		[
-			`public, max-age=${Math.floor(maxAge / 1000)}`,
-			immutable && 'immutable',
-		].filter(Boolean).join(', ')
-	)
+	if (!disableCacheControl && !res.getHeader('Cache-Control'))
+		res.setHeader(
+			'Cache-Control',
+			[`public, max-age=${Math.floor(maxAge / 1000)}`, immutable && 'immutable'].filter(Boolean).join(', '),
+		)
 
-	if (!disableLastModified && !res.getHeader('Last-Modified')) res.setHeader('Last-Modified', fileStat.mtime.toUTCString())
+	if (!disableLastModified && !res.getHeader('Last-Modified'))
+		res.setHeader('Last-Modified', fileStat.mtime.toUTCString())
 
-	if (etag !== 'disabled' && !res.getHeader('ETag')) res.setHeader('ETag', etag === 'weak' ? statTag(fileStat) : await entityTagPath(fileStat, pathname, false))
+	if (etag !== 'disabled' && !res.getHeader('ETag'))
+		res.setHeader('ETag', etag === 'weak' ? statTag(fileStat) : await entityTagPath(fileStat, pathname, false))
 	//endregion set header fields
 
 	// content-type
-	if (!res.getHeader('Content-Type')) res.setHeader('Content-Type', contentTypeForExtension(path.extname(pathname).slice(1)) || 'application/octet-stream')
+	if (!res.getHeader('Content-Type'))
+		res.setHeader(
+			'Content-Type',
+			contentTypeForExtension(path.extname(pathname).slice(1)) || 'application/octet-stream',
+		)
 
 	// conditional GET support
 	// isConditionalGET
-	if (req.headers['if-match'] || req.headers['if-unmodified-since'] || req.headers['if-none-match'] || req.headers['if-modified-since']) {
+	if (
+		req.headers['if-match'] ||
+		req.headers['if-unmodified-since'] ||
+		req.headers['if-none-match'] ||
+		req.headers['if-modified-since']
+	) {
 		//region isPreconditionFailure
 		// if-match
 		const match = req.headers['if-match']
 		if (match) {
 			const etag = res.getHeader('ETag')
 			if (
-				!etag
-				|| (match !== '*' && parseTokenList(match).every(match => match !== etag && match !== 'W/' + etag && 'W/' + match !== etag))
-			) throw httpError('Precondition Failed: request headers do not match the response', 412)
+				!etag ||
+				(match !== '*' &&
+					parseTokenList(match).every(match => match !== etag && match !== 'W/' + etag && 'W/' + match !== etag))
+			)
+				throw httpError('Precondition Failed: request headers do not match the response', 412)
 		}
 
 		// if-unmodified-since (ignore when using strong etag since mtime may be unreliable)
@@ -138,18 +153,19 @@ export async function sendFileTrusted(
 			const unmodifiedSince = parseHttpDate(req.headers['if-unmodified-since'])
 			if (!isNaN(unmodifiedSince)) {
 				const lastModified = parseHttpDate(res.getHeader('Last-Modified'))
-				if (isNaN(lastModified) || lastModified > unmodifiedSince) throw httpError('Precondition Failed: resource has been modified since the specified date', 412)
+				if (isNaN(lastModified) || lastModified > unmodifiedSince)
+					throw httpError('Precondition Failed: resource has been modified since the specified date', 412)
 			}
 		}
 		//endregion isPreconditionFailure
 
 		// isCachable
 		if (
-			(res.statusCode >= 200 && res.statusCode < 300 || res.statusCode === 304)
-			&& fresh(req.headers, {
+			((res.statusCode >= 200 && res.statusCode < 300) || res.statusCode === 304) &&
+			fresh(req.headers, {
 				etag: res.getHeader('ETag'),
 				// Only use last-modified for freshness check when using weak Etag
-				'last-modified': etag === 'weak' ? res.getHeader('Last-Modified') : undefined
+				'last-modified': etag === 'weak' ? res.getHeader('Last-Modified') : undefined,
 			})
 		) {
 			// removeContentHeaderFields
@@ -159,7 +175,7 @@ export async function sendFileTrusted(
 			res.removeHeader('Content-Range')
 			res.removeHeader('Content-Type')
 			res.statusCode = 304
-			return void await promisify(res.end.bind(res))()
+			return void (await promisify(res.end.bind(res))())
 		}
 	}
 
@@ -211,13 +227,13 @@ export async function sendFileTrusted(
 	res.setHeader('Content-Length', len)
 
 	// HEAD support
-	if (req.method === 'HEAD') return void await promisify(res.end.bind(res))()
+	if (req.method === 'HEAD') return void (await promisify(res.end.bind(res))())
 
 	// stream file: pipeline awaits res 'finish' (full flush) and destroys the source on error
 	await pipeline(createReadStream(pathname, {start, end}), res)
 }
 
-function isRangeFresh (req: IncomingMessage, res: ServerResponse) {
+function isRangeFresh(req: IncomingMessage, res: ServerResponse) {
 	const ifRange = req.headers['if-range']
 
 	if (!ifRange) return true
@@ -233,6 +249,6 @@ function isRangeFresh (req: IncomingMessage, res: ServerResponse) {
 	return parseHttpDate(lastModified) <= parseHttpDate(ifRange)
 }
 
-function contentRange(type: string, size: number, range?: {start: number, end: number}) {
+function contentRange(type: string, size: number, range?: {start: number; end: number}) {
 	return `${type} ${range ? range.start + '-' + range.end : '*'}/${size}`
 }

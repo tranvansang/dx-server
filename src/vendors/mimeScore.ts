@@ -6,7 +6,7 @@ const facetScores = {
 	'x-': 200,
 	'x.': 300,
 	'vnd.': 400,
-	default: 900
+	default: 900,
 }
 
 // Score mime source (Logic originally from `jshttp/mime-types` module)
@@ -14,7 +14,7 @@ const sourceScores = {
 	nginx: 10,
 	apache: 20,
 	iana: 40,
-	default: 30 // definitions added by `jshttp/mime-db` project?
+	default: 30, // definitions added by `jshttp/mime-db` project?
 }
 
 const typeScores = {
@@ -30,7 +30,7 @@ const typeScores = {
 	audio: 2,
 	video: 3,
 
-	default: 0
+	default: 0,
 }
 
 /**

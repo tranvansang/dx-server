@@ -4,11 +4,14 @@ import {urlFromReq} from './bodyHelpers.js'
 
 export function chainStatic(
 	pattern: string,
-	{getPathname, ...options}: SendFileOptions & {
+	{
+		getPathname,
+		...options
+	}: SendFileOptions & {
 		// return URI-encoded pathname
 		// by default: get the full path
 		getPathname?(matched: any): string // should keep the heading slash
-	}
+	},
 ): Chainable {
 	const urlPattern = new URLPattern({pathname: pattern})
 	return async next => {
@@ -20,13 +23,7 @@ export function chainStatic(
 		if (!matched) return next()
 
 		try {
-			await sendFileTrusted(
-				req,
-				getRes(),
-					getPathname?.(matched)
-				?? decodeURIComponent(pathname),
-				options,
-			)
+			await sendFileTrusted(req, getRes(), getPathname?.(matched) ?? decodeURIComponent(pathname), options)
 		} catch (e) {
 			return next(e) // if request's pathname matches pattern, but file is not found, next() will be called with error
 		}

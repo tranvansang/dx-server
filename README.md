@@ -46,10 +46,9 @@ To check if your runtime supports URLPattern natively:
 
 ```javascript
 if (typeof URLPattern === 'undefined') {
-  console.log('URLPattern not supported, polyfill required')
+	console.log('URLPattern not supported, polyfill required')
 }
 ```
-
 
 ## Quick Start
 
@@ -60,25 +59,33 @@ import {Server} from 'node:http'
 import chain from 'jchain'
 import dxServer, {getReq, getRes, router, setHtml, setText} from 'dx-server'
 
-new Server().on('request', (req, res) => chain(
-  dxServer(req, res),
-  async next => {
-    try {
-      // Access req/res from anywhere - no prop drilling!
-      getRes().setHeader('Cache-Control', 'no-cache')
-      console.log(getReq().method, getReq().url)
-      await next()
-    } catch (e) {
-      console.error(e)
-      setHtml('internal server error', {status: 500})
-    }
-  },
-  router.get({
-    '/'() {setHtml('hello world')},
-    '/health'() {setText('ok')}
-  }),
-  () => setHtml('not found', {status: 404}),
-)()).listen(3000, () => console.log('server is listening at 3000'))
+new Server()
+	.on('request', (req, res) =>
+		chain(
+			dxServer(req, res),
+			async next => {
+				try {
+					// Access req/res from anywhere - no prop drilling!
+					getRes().setHeader('Cache-Control', 'no-cache')
+					console.log(getReq().method, getReq().url)
+					await next()
+				} catch (e) {
+					console.error(e)
+					setHtml('internal server error', {status: 500})
+				}
+			},
+			router.get({
+				'/'() {
+					setHtml('hello world')
+				},
+				'/health'() {
+					setText('ok')
+				},
+			}),
+			() => setHtml('not found', {status: 404}),
+		)(),
+	)
+	.listen(3000, () => console.log('server is listening at 3000'))
 ```
 
 ### Custom Contexts
@@ -90,21 +97,21 @@ import {makeDxContext, getReq} from 'dx-server'
 
 // Create auth context
 const authContext = makeDxContext(async () => {
-  const token = getReq().headers.authorization
-  if (!token) return null
-  return await validateToken(token) // Your validation logic
+	const token = getReq().headers.authorization
+	if (!token) return null
+	return await validateToken(token) // Your validation logic
 })
 
 // Use in middleware
 chain(
-  authContext.chain(), // Initialize for all requests
-  next => {
-    if (!authContext.value) {
-      setJson({error: 'Unauthorized'}, {status: 401})
-      return
-    }
-    return next()
-  }
+	authContext.chain(), // Initialize for all requests
+	next => {
+		if (!authContext.value) {
+			setJson({error: 'Unauthorized'}, {status: 401})
+			return
+		}
+		return next()
+	},
 )
 ```
 
@@ -116,13 +123,17 @@ import chain from 'jchain'
 import dxServer, {chainStatic, setHtml} from 'dx-server'
 import {resolve} from 'node:path'
 
-new Server().on('request', (req, res) => chain(
-  dxServer(req, res),
-  chainStatic('/*', {
-    root: resolve(import.meta.dirname, 'public'),
-  }),
-  () => setHtml('not found', {status: 404}),
-)()).listen(3000)
+new Server()
+	.on('request', (req, res) =>
+		chain(
+			dxServer(req, res),
+			chainStatic('/*', {
+				root: resolve(import.meta.dirname, 'public'),
+			}),
+			() => setHtml('not found', {status: 404}),
+		)(),
+	)
+	.listen(3000)
 ```
 
 ### Production-Ready Server
@@ -132,89 +143,122 @@ import {Server} from 'node:http'
 import {promisify} from 'node:util'
 import chain from 'jchain'
 import dxServer, {
-  getReq, getRes,
-  getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery,
-  setHtml, setJson, setText, setEmpty, setBuffer, setRedirect, setNodeStream, setWebStream, setFile,
-  router, chainStatic, makeDxContext
+	getReq,
+	getRes,
+	getBuffer,
+	getJson,
+	getRaw,
+	getText,
+	getUrlEncoded,
+	getQuery,
+	setHtml,
+	setJson,
+	setText,
+	setEmpty,
+	setBuffer,
+	setRedirect,
+	setNodeStream,
+	setWebStream,
+	setFile,
+	router,
+	chainStatic,
+	makeDxContext,
 } from 'dx-server'
 import {resolve} from 'node:path'
 
 // it is best practice to create custom error class for non-system error
 class ServerError extends Error {
-  name = 'ServerError'
+	name = 'ServerError'
 
-  constructor(message, status = 400, code = 'unknown') {
-    super(message)
-    this.status = status
-    this.code = code
-  }
+	constructor(message, status = 400, code = 'unknown') {
+		super(message)
+		this.status = status
+		this.code = code
+	}
 }
 
 const authContext = makeDxContext(async () => {
-  if (getReq().headers.authorization) return {id: 1, name: 'joe (private)'}
+	if (getReq().headers.authorization) return {id: 1, name: 'joe (private)'}
 })
 
 function requireAuth() {
-  if (!authContext.value) throw new ServerError('Unauthorized', 401, 'UNAUTHORIZED')
+	if (!authContext.value) throw new ServerError('Unauthorized', 401, 'UNAUTHORIZED')
 }
 
 const serverChain = chain(
-  next => {
-    // req, res can be accessed from anywhere via context which uses NodeJS's AsyncLocalStorage under the hood
-    getRes().setHeader('Cache-Control', 'no-cache')
-    return next() // must return or await
-  },
-  async next => {// global error catching for all following middlewares
-    try {
-      await next()
-    } catch (e) {// only app error message should be shown to user
-      if (e instanceof ServerError) setHtml(`${e.message} (code: ${e.code})`, {status: e.status})
-      else {// report system error
-        console.error(e)
-        setHtml('internal server error (code: internal)', {status: 500})
-      }
-    }
-  },
-  chainStatic('/public/*', {root: resolve(import.meta.dirname, 'public')}),
-  authContext.chain(), // chain context will set the context value to authContext.value in every request
-  router.post('/api/*', async ({next}) => {// example of catching error for all /api/* routes
-    try {
-      await next()
-    } catch (e) {
-      if (e instanceof ServerError) setJson({// only app error message should be shown to user
-        error: e.message,
-        code: e.code,
-      }, {status: e.status})
-      else {// report system error
-        console.error(e)
-        setJson({
-          message: 'internal server error',
-          code: 'internal'
-        }, {status: 500})
-      }
-    }
-  }),
-  router.post({
-    '/api/sample-public-api'() { // sample POST router
-      setJson({name: 'joe'})
-    },
-    '/api/me'() { // sample private router
-      requireAuth()
-      setJson({name: authContext.value.name})
-    },
-  }),
-  router.get('/', () => setHtml('ok')), // router.method() accepts 2 formats
-  router.get('/health', () => setText('ok')),
-  () => { // not found router
-    throw new ServerError('Not found', 404, 'NOT_FOUND')
-  },
+	next => {
+		// req, res can be accessed from anywhere via context which uses NodeJS's AsyncLocalStorage under the hood
+		getRes().setHeader('Cache-Control', 'no-cache')
+		return next() // must return or await
+	},
+	async next => {
+		// global error catching for all following middlewares
+		try {
+			await next()
+		} catch (e) {
+			// only app error message should be shown to user
+			if (e instanceof ServerError) setHtml(`${e.message} (code: ${e.code})`, {status: e.status})
+			else {
+				// report system error
+				console.error(e)
+				setHtml('internal server error (code: internal)', {status: 500})
+			}
+		}
+	},
+	chainStatic('/public/*', {root: resolve(import.meta.dirname, 'public')}),
+	authContext.chain(), // chain context will set the context value to authContext.value in every request
+	router.post('/api/*', async ({next}) => {
+		// example of catching error for all /api/* routes
+		try {
+			await next()
+		} catch (e) {
+			if (e instanceof ServerError)
+				setJson(
+					{
+						// only app error message should be shown to user
+						error: e.message,
+						code: e.code,
+					},
+					{status: e.status},
+				)
+			else {
+				// report system error
+				console.error(e)
+				setJson(
+					{
+						message: 'internal server error',
+						code: 'internal',
+					},
+					{status: 500},
+				)
+			}
+		}
+	}),
+	router.post({
+		'/api/sample-public-api'() {
+			// sample POST router
+			setJson({name: 'joe'})
+		},
+		'/api/me'() {
+			// sample private router
+			requireAuth()
+			setJson({name: authContext.value.name})
+		},
+	}),
+	router.get('/', () => setHtml('ok')), // router.method() accepts 2 formats
+	router.get('/health', () => setText('ok')),
+	() => {
+		// not found router
+		throw new ServerError('Not found', 404, 'NOT_FOUND')
+	},
 )
 
-const tcpServer = new Server()
-  .on('request', (req, res) => chain(
-    dxServer(req, res), // basic dx-server context
-    serverChain,
-  )())
+const tcpServer = new Server().on('request', (req, res) =>
+	chain(
+		dxServer(req, res), // basic dx-server context
+		serverChain,
+	)(),
+)
 
 await promisify(tcpServer.listen.bind(tcpServer))(3000)
 console.log('server is listening at 3000')
@@ -231,9 +275,9 @@ dx-server uses Node.js AsyncLocalStorage to provide request/response context glo
 import {getReq, getRes} from 'dx-server'
 
 function someDeepFunction() {
-  const req = getReq()  // No need to pass req through multiple layers
-  const res = getRes()
-  res.setHeader('X-Custom', 'value')
+	const req = getReq() // No need to pass req through multiple layers
+	const res = getRes()
+	res.setHeader('X-Custom', 'value')
 }
 ```
 
@@ -250,11 +294,11 @@ const text = await getText()
 
 // Sync usage (requires chaining)
 chain(
-  getJson.chain({bodyLimit: 1024 * 1024}), // 1MB limit
-  next => {
-    console.log(getJson.value) // Access synchronously
-    return next()
-  }
+	getJson.chain({bodyLimit: 1024 * 1024}), // 1MB limit
+	next => {
+		console.log(getJson.value) // Access synchronously
+		return next()
+	},
 )
 ```
 
@@ -267,23 +311,22 @@ import {makeDxContext, getReq} from 'dx-server'
 
 // Create auth context
 const authContext = makeDxContext(async () => {
-  const token = getReq().headers.authorization
-  if (!token) return null
-  return await validateToken(token) // Your validation logic
+	const token = getReq().headers.authorization
+	if (!token) return null
+	return await validateToken(token) // Your validation logic
 })
 
 // Use in middleware
 chain(
-  authContext.chain(), // Initialize for all requests
-  next => {
-    if (!authContext.value) {
-      setJson({error: 'Unauthorized'}, {status: 401})
-      return
-    }
-    return next()
-  }
+	authContext.chain(), // Initialize for all requests
+	next => {
+		if (!authContext.value) {
+			setJson({error: 'Unauthorized'}, {status: 401})
+			return
+		}
+		return next()
+	},
 )
-
 ```
 
 ## API Reference
@@ -292,38 +335,60 @@ chain(
 
 ```javascript
 import dxServer, {
-  // Request/Response access
-  getReq, getRes,
-  
-  // Request body parsers
-  getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery,
-  
-  // Response setters
-  setHtml, setJson, setText, setEmpty, setBuffer, setRedirect, 
-  setNodeStream, setWebStream, setFile,
-  
-  // Utilities
-  router, chainStatic, makeDxContext,
-  
-  // Logging
-  logger, logJson,
+	// Request/Response access
+	getReq,
+	getRes,
+
+	// Request body parsers
+	getBuffer,
+	getJson,
+	getRaw,
+	getText,
+	getUrlEncoded,
+	getQuery,
+
+	// Response setters
+	setHtml,
+	setJson,
+	setText,
+	setEmpty,
+	setBuffer,
+	setRedirect,
+	setNodeStream,
+	setWebStream,
+	setFile,
+
+	// Utilities
+	router,
+	chainStatic,
+	makeDxContext,
+
+	// Logging
+	logger,
+	logJson,
 } from 'dx-server'
 
 // Low-level helpers
 import {
-  setBufferBodyDefaultOptions,
-  bufferFromReq, jsonFromReq, rawFromReq, textFromReq, 
-  urlEncodedFromReq, queryFromReq,
+	setBufferBodyDefaultOptions,
+	bufferFromReq,
+	jsonFromReq,
+	rawFromReq,
+	textFromReq,
+	urlEncodedFromReq,
+	queryFromReq,
 } from 'dx-server/helpers'
 ```
 
 ### Core Functions
 
 #### Request/Response Access
+
 - **`getReq()`** - Get the current request object
 - **`getRes()`** - Get the current response object
 
 #### Body Parsers
+
 All body parsers are async, lazy-loaded, and cached per request:
 
 - **`getJson(options?)`** - Parse JSON body (requires `Content-Type: application/json`)
@@ -334,6 +399,7 @@ All body parsers are async, lazy-loaded, and cached per request:
 - **`getQuery(options?)`** - Parse query string parameters
 
 Options:
+
 ```typescript
 {
   bodyLimit?: number      // Max body size in bytes (default: 100KB)
@@ -343,6 +409,7 @@ Options:
 ```
 
 #### Response Setters
+
 - **`setJson(data, {status?, headers?})`** - Send JSON response
 - **`setHtml(html, {status?, headers?})`** - Send HTML response
 - **`setText(text, {status?, headers?})`** - Send plain text
@@ -354,30 +421,35 @@ Options:
 - **`setEmpty({status?, headers?})`** - Send empty response
 
 #### Context Management
+
 - **`makeDxContext(fn)`** - Create a custom context object
+
   ```javascript
   const ctx = makeDxContext(() => computeValue())
-  
+
   // Access value
-  await ctx()        // Lazy load
-  ctx.value          // Sync access (after loading)
-  ctx.get(req)       // Get for specific request
-  
+  await ctx() // Lazy load
+  ctx.value // Sync access (after loading)
+  ctx.get(req) // Get for specific request
+
   // Set value
   ctx.value = newValue
   ctx.set(req, newValue)
   ```
 
 #### Middleware Utilities
+
 - **`chainStatic(pattern, options)`** - Serve static files
   ```javascript
   chainStatic('/public/*', {
-    root: '/path/to/files',
-    getPathname(matched){return matched.pathname}, // take URLPattern matched object, epects to return the file path
-  // the returned file path must be run through decodeURIComponent before returning
-    dotfiles: 'deny',
-    disableEtag: false,
-    lastModified: true
+  	root: '/path/to/files',
+  	getPathname(matched) {
+  		return matched.pathname
+  	}, // take URLPattern matched object, epects to return the file path
+  	// the returned file path must be run through decodeURIComponent before returning
+  	dotfiles: 'deny',
+  	disableEtag: false,
+  	lastModified: true,
   })
   ```
 
@@ -390,15 +462,21 @@ import {router} from 'dx-server'
 
 // Single route
 router.get('/users/:id', ({matched}) => {
-  const {id} = matched.pathname.groups
-  setJson({userId: id})
+	const {id} = matched.pathname.groups
+	setJson({userId: id})
 })
 
 // Multiple routes
 router.post({
-  '/api/users'() { /* create user */ },
-  '/api/users/:id'({matched}) { /* update user */ },
-  '/api/users/:id/posts'({matched}) { /* get user posts */ }
+	'/api/users'() {
+		/* create user */
+	},
+	'/api/users/:id'({matched}) {
+		/* update user */
+	},
+	'/api/users/:id/posts'({matched}) {
+		/* get user posts */
+	},
 })
 
 // All HTTP methods supported
@@ -409,28 +487,32 @@ router.delete(pattern, handler)
 router.patch(pattern, handler)
 router.head(pattern, handler)
 router.options(pattern, handler)
-router.all(pattern, handler)  // Any method
+router.all(pattern, handler) // Any method
 
 // Custom method
 router.method('CUSTOM', pattern, handler)
 
 // With prefix option
-router.get({
-  '/users': listUsers,
-  '/users/:id': getUser
-}, {prefix: '/api'})  // Routes become /api/users, /api/users/:id
+router.get(
+	{
+		'/users': listUsers,
+		'/users/:id': getUser,
+	},
+	{prefix: '/api'},
+) // Routes become /api/users, /api/users/:id
 ```
 
 #### URLPattern vs Express Patterns
 
-| Pattern | URLPattern | Express |
-|---------|------------|---------|
-| Wildcard | `/api/*` | `/api/*` or `/api/(.*)` |
-| Optional trailing slash | `{/}?` | `/path/?` |
-| Named params | `/:id` | `/:id` |
-| Optional params | `/:id?` | `/:id?` |
+| Pattern                 | URLPattern | Express                 |
+| ----------------------- | ---------- | ----------------------- |
+| Wildcard                | `/api/*`   | `/api/*` or `/api/(.*)` |
+| Optional trailing slash | `{/}?`     | `/path/?`               |
+| Named params            | `/:id`     | `/:id`                  |
+| Optional params         | `/:id?`    | `/:id?`                 |
 
 **Important differences:**
+
 - `'/foo'` matches `/foo` but NOT `/foo/`
 - `'/foo/'` matches `/foo/` but NOT `/foo`
 - Use `'/foo{/}?'` to match both
@@ -450,12 +532,13 @@ import cors from 'cors'
 // Adapt one Connect/Express-style middleware (or a full Express app, which has the
 // same (req, res, next) shape) into a jchain step. Always calls next() so the rest of
 // the chain runs — dx-server handles the case where the response is already ended.
-const fromConnect = mw => next => new Promise((resolve, reject) => {
-  mw(getReq(), getRes(), err => {
-    if (err) return reject(err)
-    next().then(resolve, reject)
-  })
-})
+const fromConnect = mw => next =>
+	new Promise((resolve, reject) => {
+		mw(getReq(), getRes(), err => {
+			if (err) return reject(err)
+			next().then(resolve, reject)
+		})
+	})
 
 const app = express()
 app.set('trust proxy', true)
@@ -463,12 +546,12 @@ app.use('/public', express.static('public'))
 app.get('/legacy', (req, res) => res.json({message: 'Express route'}))
 
 chain(
-  fromConnect(app), // mount the entire Express app first
-  fromConnect(morgan('common')),
-  fromConnect(helmet()),
-  fromConnect(cors()),
-  // dx-server routes continue here
-  router.get('/', () => setHtml('ok')),
+	fromConnect(app), // mount the entire Express app first
+	fromConnect(morgan('common')),
+	fromConnect(helmet()),
+	fromConnect(cors()),
+	// dx-server routes continue here
+	router.get('/', () => setHtml('ok')),
 )
 ```
 
@@ -478,15 +561,21 @@ Pure functions for custom implementations:
 
 ```javascript
 import {
-  setBufferBodyDefaultOptions,
-  bufferFromReq, jsonFromReq, rawFromReq, 
-  textFromReq, urlEncodedFromReq, queryFromReq
+	setBufferBodyDefaultOptions,
+	bufferFromReq,
+	jsonFromReq,
+	rawFromReq,
+	textFromReq,
+	urlEncodedFromReq,
+	queryFromReq,
 } from 'dx-server/helpers'
 
 // Set global defaults
 setBufferBodyDefaultOptions({
-  bodyLimit: 10 * 1024 * 1024, // 10MB
-  queryParser(search){return myCustomParser(search)}
+	bodyLimit: 10 * 1024 * 1024, // 10MB
+	queryParser(search) {
+		return myCustomParser(search)
+	},
 })
 
 // Use directly with req/res (no context required)
@@ -497,61 +586,63 @@ const query = queryFromReq(req)
 ## Security Considerations
 
 ### Body Size Limits
+
 Always set appropriate body size limits to prevent DoS attacks:
 
 ```javascript
 chain(
-  getJson.chain({bodyLimit: 1024 * 1024}), // 1MB limit
-  // or globally:
-  dxServer(req, res, {bodyLimit: 5 * 1024 * 1024}) // 5MB
+	getJson.chain({bodyLimit: 1024 * 1024}), // 1MB limit
+	// or globally:
+	dxServer(req, res, {bodyLimit: 5 * 1024 * 1024}), // 5MB
 )
 ```
 
 ### Error Handling
+
 Never expose internal errors to clients:
 
 ```javascript
 class AppError extends Error {
-  constructor(message, status = 400, code = 'ERROR') {
-    super(message)
-    this.status = status
-    this.code = code
-  }
+	constructor(message, status = 400, code = 'ERROR') {
+		super(message)
+		this.status = status
+		this.code = code
+	}
 }
 
-chain(
-  async next => {
-    try {
-      await next()
-    } catch (error) {
-      if (error instanceof AppError) {
-        setJson({error: error.message, code: error.code}, {status: error.status})
-      } else {
-        console.error(error) // Log for debugging
-        setJson({error: 'Internal server error'}, {status: 500})
-      }
-    }
-  }
-)
+chain(async next => {
+	try {
+		await next()
+	} catch (error) {
+		if (error instanceof AppError) {
+			setJson({error: error.message, code: error.code}, {status: error.status})
+		} else {
+			console.error(error) // Log for debugging
+			setJson({error: 'Internal server error'}, {status: 500})
+		}
+	}
+})
 ```
 
 ### Input Validation
+
 Always validate input data:
 
 ```javascript
 router.post('/api/users', async () => {
-  const data = await getJson()
-  
-  // Validate
-  if (!data?.email || !isValidEmail(data.email)) {
-    throw new AppError('Invalid email', 400, 'INVALID_EMAIL')
-  }
-  
-  // Process...
+	const data = await getJson()
+
+	// Validate
+	if (!data?.email || !isValidEmail(data.email)) {
+		throw new AppError('Invalid email', 400, 'INVALID_EMAIL')
+	}
+
+	// Process...
 })
 ```
 
 ### Security Headers
+
 Use security middleware via the `fromConnect` adapter shown in [Express Integration](#express-integration):
 
 ```javascript
@@ -559,58 +650,65 @@ import helmet from 'helmet'
 import cors from 'cors'
 
 chain(
-  fromConnect(helmet()),
-  fromConnect(cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(','),
-    credentials: true
-  })),
+	fromConnect(helmet()),
+	fromConnect(
+		cors({
+			origin: process.env.ALLOWED_ORIGINS?.split(','),
+			credentials: true,
+		}),
+	),
 )
 ```
 
 ## Advanced Examples
 
 ### File Upload with Busboy
+
 ```javascript
 import busboy from 'busboy'
 
 router.post('/upload', () => {
-  const req = getReq()
-  const bb = busboy({headers: req.headers, limits: {fileSize: 10 * 1024 * 1024}})
-  
-  bb.on('file', (name, file, info) => {
-    // Handle file stream
-  })
-  
-  req.pipe(bb)
+	const req = getReq()
+	const bb = busboy({headers: req.headers, limits: {fileSize: 10 * 1024 * 1024}})
+
+	bb.on('file', (name, file, info) => {
+		// Handle file stream
+	})
+
+	req.pipe(bb)
 })
 ```
 
 ### WebSocket Upgrade
+
 ```javascript
 import {WebSocketServer} from 'ws'
 
 const wss = new WebSocketServer({noServer: true})
 
 server.on('upgrade', (request, socket, head) => {
-  if (request.url === '/ws') {
-    wss.handleUpgrade(request, socket, head, ws => {
-      wss.emit('connection', ws, request)
-    })
-  }
+	if (request.url === '/ws') {
+		wss.handleUpgrade(request, socket, head, ws => {
+			wss.emit('connection', ws, request)
+		})
+	}
 })
 ```
 
 ### Rate Limiting
+
 Using the `fromConnect` adapter from [Express Integration](#express-integration):
 
 ```javascript
 import rateLimit from 'express-rate-limit'
 
 chain(
-  fromConnect(rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per windowMs
-  })),
+	fromConnect(
+		rateLimit({
+			windowMs: 15 * 60 * 1000, // 15 minutes
+			max: 100, // limit each IP to 100 requests per windowMs
+		}),
+	),
 )
 ```
 
@@ -631,14 +729,14 @@ chain(
 ```javascript
 // Express
 app.get('/users/:id', (req, res) => {
-  const {id} = req.params
-  res.json({userId: id})
+	const {id} = req.params
+	res.json({userId: id})
 })
 
 // dx-server
 router.get('/users/:id', ({matched}) => {
-  const {id} = matched.pathname.groups
-  setJson({userId: id})
+	const {id} = matched.pathname.groups
+	setJson({userId: id})
 })
 ```
 

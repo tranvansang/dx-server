@@ -1,4 +1,3 @@
-
 // https://github.com/jshttp/content-type/blob/d02574e9640bd4370f148c767b1b877b5a300070/index.js#L106
 /**
  * RegExp to match type in RFC 7231 sec 3.1.1.1
@@ -22,7 +21,8 @@ const typeRegexp = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+$/
  * obs-text      = %x80-FF
  * quoted-pair   = "\" ( HTAB / SP / VCHAR / obs-text )
  */
-const paramRegexp = /; *([!#$%&'*+.^_`|~0-9A-Za-z-]+) *= *("(?:[\u000b\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\u000b\u0020-\u00ff])*"|[!#$%&'*+.^_`|~0-9A-Za-z-]+) */g // eslint-disable-line no-control-regex
+const paramRegexp =
+	/; *([!#$%&'*+.^_`|~0-9A-Za-z-]+) *= *("(?:[\u000b\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\u000b\u0020-\u00ff])*"|[!#$%&'*+.^_`|~0-9A-Za-z-]+) */g // eslint-disable-line no-control-regex
 const textRegexp = /^[\u000b\u0020-\u007e\u0080-\u00ff]+$/ // eslint-disable-line no-control-regex
 const tokenRegexp = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/
 /**
@@ -33,11 +33,9 @@ const tokenRegexp = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/
  */
 const qescRegexp = /\\([\u000b\u0020-\u00ff])/g // eslint-disable-line no-control-regex
 
-export function parseContentType (header: string) {
+export function parseContentType(header: string) {
 	let index = header.indexOf(';')
-	const mediaType = index !== -1
-		? header.slice(0, index).trim()
-		: header.trim()
+	const mediaType = index !== -1 ? header.slice(0, index).trim() : header.trim()
 
 	if (!typeRegexp.test(mediaType)) throw new TypeError(`invalid media type: ${mediaType}`)
 	const parameters: Record<string, string> = Object.create(null)
@@ -78,7 +76,7 @@ export function parseContentType (header: string) {
  * RegExp to match chars that must be quoted-pair in RFC 7230 sec 3.2.6
  */
 const quoteRegexp = /([\\"])/g
-function qstring (str: string) {
+function qstring(str: string) {
 	// no need to quote tokens
 	if (tokenRegexp.test(str)) return str
 
@@ -86,14 +84,14 @@ function qstring (str: string) {
 	return `"${str.replace(quoteRegexp, '\\$1')}"`
 }
 
-function formatContentType({mediaType, parameters}: {
-	mediaType: string
-	parameters?: Record<string, string>
-}) {
+function formatContentType({mediaType, parameters}: {mediaType: string; parameters?: Record<string, string>}) {
 	if (!mediaType || !typeRegexp.test(mediaType)) throw new TypeError(`invalid type: ${mediaType}`)
 	return `${mediaType}${
 		parameters
-			? Object.keys(parameters).sort().map(key => `; ${key}=${qstring(parameters[key])}`).join('')
+			? Object.keys(parameters)
+					.sort()
+					.map(key => `; ${key}=${qstring(parameters[key])}`)
+					.join('')
 			: ''
 	}`
 }

@@ -53,16 +53,14 @@ export function parseRange(size: number, str: string | undefined, options?: {com
 		// add range
 		ranges.push({
 			start: start,
-			end: end
+			end: end,
 		})
 	}
 
 	// unsatisifiable
 	if (ranges.length < 1) return -1
 
-	return options && options.combine
-		? combineRanges(ranges)
-		: ranges
+	return options && options.combine ? combineRanges(ranges) : ranges
 }
 
 /**
@@ -109,7 +107,7 @@ function mapWithIndex(range: Range, index: number) {
 	return {
 		start: range.start,
 		end: range.end,
-		index: index
+		index: index,
 	}
 }
 
@@ -121,7 +119,7 @@ function mapWithIndex(range: Range, index: number) {
 function mapWithoutIndex(range: IndexedRange) {
 	return {
 		start: range.start,
-		end: range.end
+		end: range.end,
 	}
 }
 

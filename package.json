@@ -1,29 +1,29 @@
 {
-  "name": "dx-server",
-  "version": "0.13.0",
-  "main": "./lib/index.js",
-  "repository": "https://github.com/tranvansang/dx-server",
-  "author": "Sang Tran <t@sang.jp>",
-  "files": [
-    "lib"
-  ],
-  "exports": {
-    ".": {
-      "default": "./lib/index.js",
-      "types": "./lib/index.d.ts"
-    },
-    "./helpers": {
-      "default": "./lib/helpers.js",
-      "types": "./lib/helpers.d.ts"
-    }
-  },
-  "type": "module",
-  "scripts": {
-    "prepublishOnly": "tsc"
-  },
-  "license": "MIT",
-  "devDependencies": {
-    "@types/node": "^25.6.0",
-    "typescript": "^6.0.2"
-  }
+	"name": "dx-server",
+	"version": "0.13.0",
+	"main": "./lib/index.js",
+	"repository": "https://github.com/tranvansang/dx-server",
+	"author": "Sang Tran <t@sang.jp>",
+	"files": [
+		"lib"
+	],
+	"exports": {
+		".": {
+			"default": "./lib/index.js",
+			"types": "./lib/index.d.ts"
+		},
+		"./helpers": {
+			"default": "./lib/helpers.js",
+			"types": "./lib/helpers.d.ts"
+		}
+	},
+	"type": "module",
+	"scripts": {
+		"prepublishOnly": "tsc"
+	},
+	"license": "MIT",
+	"devDependencies": {
+		"@types/node": "^25.6.0",
+		"typescript": "^6.0.2"
+	}
 }

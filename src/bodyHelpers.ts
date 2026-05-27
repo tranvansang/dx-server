@@ -25,28 +25,22 @@ export async function bufferFromReq(req: IncomingMessage, options?: Partial<Buff
 	 * or `content-length` headers set.
 	 * http://www.w3.org/Protocols/rfc2616/rfc2616-sec4.html#sec4.3
 	 */
-		// https://github.com/jshttp/type-is/blob/cdcfe23e9833872e425b0aaf71ca0311373b6116/index.js#L92
+	// https://github.com/jshttp/type-is/blob/cdcfe23e9833872e425b0aaf71ca0311373b6116/index.js#L92
 	const contentLengthParsed = parseInt(req.headers['content-length'] ?? '', 10)
-	if (
-		req.headers['transfer-encoding'] === undefined
-		&& isNaN(contentLengthParsed)
-	) return
+	if (req.headers['transfer-encoding'] === undefined && isNaN(contentLengthParsed)) return
 	const contentLength = isNaN(contentLengthParsed) ? undefined : contentLengthParsed
 
 	// read
 	const encoding = (req.headers['content-encoding'] ?? 'identity').toLowerCase()
 	const stream = getContentStream(req, encoding)
-	return await readStream(
-		stream,
-		{
-			length: encoding === 'identity' ? contentLength : undefined,
-			limit: bodyLimit,
-		}
-	)
+	return await readStream(stream, {
+		length: encoding === 'identity' ? contentLength : undefined,
+		limit: bodyLimit,
+	})
 }
 
 // if content-type is not as expected, return undefined
-function forceGetContentTypeParams(req: IncomingMessage, expected: string){
+function forceGetContentTypeParams(req: IncomingMessage, expected: string) {
 	const contentTypeRaw = req.headers['content-type']
 	if (!contentTypeRaw) return
 	const {mediaType, parameters} = parseContentType(contentTypeRaw)
@@ -58,7 +52,7 @@ function forceGetCharset(req: IncomingMessage, expected: string) {
 	const parameters = forceGetContentTypeParams(req, expected)
 	if (!parameters) return
 	// assert charset per RFC 7159 sec 8.1
-	const charset = parameters.charset?.toLowerCase() as BufferEncoding || 'utf-8'
+	const charset = (parameters.charset?.toLowerCase() as BufferEncoding) || 'utf-8'
 	if (!charset.startsWith('utf-')) throw new Error(`unsupported charset "${charset.toUpperCase()}"`)
 
 	return charset
@@ -91,7 +85,9 @@ export async function urlEncodedFromReq(req: IncomingMessage, options?: Partial<
 	if (!charset) return
 	const buffer = await bufferFromReq(req, options)
 	if (buffer) {
-		return (bodyDefaultOptions.urlEncodedParser ?? options?.urlEncodedParser ?? defaultQueryParser)(buffer.toString(charset))
+		return (bodyDefaultOptions.urlEncodedParser ?? options?.urlEncodedParser ?? defaultQueryParser)(
+			buffer.toString(charset),
+		)
 	}
 }
 
@@ -100,5 +96,7 @@ export function urlFromReq(req: IncomingMessage) {
 }
 
 export function queryFromReq(req: IncomingMessage, options?: Partial<BufferBodyOptions>) {
-	return (bodyDefaultOptions.queryParser ?? options?.queryParser ?? defaultQueryParser)(urlFromReq(req).searchParams.toString())
+	return (bodyDefaultOptions.queryParser ?? options?.queryParser ?? defaultQueryParser)(
+		urlFromReq(req).searchParams.toString(),
+	)
 }

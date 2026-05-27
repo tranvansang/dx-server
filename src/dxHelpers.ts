@@ -10,51 +10,57 @@ export type DxContext = {
 	disableEtag?: boolean
 } & (
 	| {
-		type: 'empty'
-		data: undefined
-		options: undefined
-	}
+			type: 'empty'
+			data: undefined
+			options: undefined
+	  }
 	| {
-		type: 'text'
-		data: string
-		options: undefined
-	}
+			type: 'text'
+			data: string
+			options: undefined
+	  }
 	| {
-		type: 'html'
-		data: string
-		options: undefined
-	}
+			type: 'html'
+			data: string
+			options: undefined
+	  }
 	| {
-		type: 'buffer'
-		data: Buffer
-		options: undefined
-	}
+			type: 'buffer'
+			data: Buffer
+			options: undefined
+	  }
 	| {
-		type: 'json'
-		data: any
-		options: undefined
-	}
+			type: 'json'
+			data: any
+			options: undefined
+	  }
 	| {
-		type: 'redirect'
-		data: string
-		options: undefined
-	}
+			type: 'redirect'
+			data: string
+			options: undefined
+	  }
 	| {
-		type: 'nodeStream'
-		data: Readable
-		options: undefined
-	}
+			type: 'nodeStream'
+			data: Readable
+			options: undefined
+	  }
 	| {
-		type: 'webStream'
-		data: ReadableStream
-		options: undefined
-	} | {
-		type: 'file'
-		data: string
-		options?: SendFileOptions
-	})
+			type: 'webStream'
+			data: ReadableStream
+			options: undefined
+	  }
+	| {
+			type: 'file'
+			data: string
+			options?: SendFileOptions
+	  }
+)
 
-export async function writeRes(req: IncomingMessage, res: ServerResponse, {type, data, charset, jsonBeautify, disableEtag, options}: DxContext) {
+export async function writeRes(
+	req: IncomingMessage,
+	res: ServerResponse,
+	{type, data, charset, jsonBeautify, disableEtag, options}: DxContext,
+) {
 	let bufferOrStream
 
 	switch (type) {
@@ -75,13 +81,14 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 			break
 		case 'webStream':
 			setContentType('application/octet-stream')
-			bufferOrStream = Readable.fromWeb(data  as import('node:stream/web').ReadableStream ?? new ReadableStream())
+			bufferOrStream = Readable.fromWeb((data as import('node:stream/web').ReadableStream) ?? new ReadableStream())
 			break
 		case 'json':
 			setContentType('application/json')
-			bufferOrStream = data === undefined
-				? Buffer.from('', charset)
-				: Buffer.from(jsonBeautify ? JSON.stringify(data, null, 2) : JSON.stringify(data), charset)
+			bufferOrStream =
+				data === undefined
+					? Buffer.from('', charset)
+					: Buffer.from(jsonBeautify ? JSON.stringify(data, null, 2) : JSON.stringify(data), charset)
 			break
 		case 'redirect': // https://stackoverflow.com/a/8059718/1398479
 			res.setHeader('location', data)
@@ -89,12 +96,7 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 			break
 		case 'file':
 			try {
-				await sendFileTrusted(
-					req,
-					res,
-					data,
-					options,
-				)
+				await sendFileTrusted(req, res, data, options)
 			} catch (e) {
 				// do nothing
 			}

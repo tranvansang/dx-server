@@ -13,14 +13,7 @@ export {
 	makeDxContext,
 } from './dx.js'
 import {dxServer} from './dx.js'
-export {
-	getBuffer,
-	getJson,
-	getRaw,
-	getText,
-	getUrlEncoded,
-	getQuery,
-} from './body.js'
+export {getBuffer, getJson, getRaw, getText, getUrlEncoded, getQuery} from './body.js'
 export {router} from './router.js'
 export {chainStatic} from './static.js'
 export {logJson, default as logger} from './logger.js'

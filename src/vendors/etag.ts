@@ -6,10 +6,7 @@ import {createReadStream, type Stats} from 'node:fs'
 export function entityTag(buf: Buffer, weak?: boolean) {
 	// pre-computed empty
 	return buf.length
-		? `${buf.length.toString(16)}-${createHash('sha1')
-			.update(buf)
-			.digest('base64')
-			.substring(0, 27)}"`
+		? `${buf.length.toString(16)}-${createHash('sha1').update(buf).digest('base64').substring(0, 27)}"`
 		: `${weak ? 'W/' : ''}"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"`
 	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag#directives
 	// weak W/ vs strong eTag
@@ -19,13 +16,9 @@ export function entityTag(buf: Buffer, weak?: boolean) {
 export async function entityTagPath(fileStat: Stats, filePath: string, weak?: boolean) {
 	const hash = createHash('sha1')
 	const defer = Promise.withResolvers<Buffer>()
-	createReadStream(filePath).pipe(hash)
-		.on('finish', defer.resolve)
-		.on('error', defer.reject)
+	createReadStream(filePath).pipe(hash).on('finish', defer.resolve).on('error', defer.reject)
 	await defer.promise
-	return `${fileStat.size.toString(16)}-${hash
-			.digest('base64')
-			.substring(0, 27)}`
+	return `${fileStat.size.toString(16)}-${hash.digest('base64').substring(0, 27)}`
 	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag#directives
 	// weak W/ vs strong eTag
 	// same weak eTag: 2 resources might be semantically equivalent, but not byte-for-byte identical
@@ -83,7 +76,7 @@ export function isFreshModifiedSince(req: IncomingMessage, lastModified: string)
 	return true
 }
 
-function parseTokenList (str: string) {
+function parseTokenList(str: string) {
 	let end = 0
 	const list = []
 	let start = 0
@@ -91,10 +84,10 @@ function parseTokenList (str: string) {
 	// gather tokens
 	for (let i = 0, len = str.length; i < len; i++) {
 		switch (str.charCodeAt(i)) {
-			case 0x20: /*   */
+			case 0x20 /*   */:
 				if (start === end) start = end = i + 1
 				break
-			case 0x2c: /* , */
+			case 0x2c /* , */:
 				list.push(str.substring(start, end))
 				start = end = i + 1
 				break

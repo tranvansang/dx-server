@@ -34,10 +34,13 @@ export function getContentStream(req: IncomingMessage, encoding: string, disable
 // https://github.com/stream-utils/raw-body/blob/191e4b6506dcf77198eed01c8feb4b6817008342/index.js#L155
 export async function readStream(
 	stream: Readable,
-	{length, limit}: {
+	{
+		length,
+		limit,
+	}: {
 		length?: number
 		limit?: number
-	}
+	},
 ) {
 	let completed = false
 
@@ -86,7 +89,7 @@ export async function readStream(
 	function onAborted() {
 		done(new Error('request aborted'))
 	}
-	function onClose () {
+	function onClose() {
 		buffers.splice(0, buffers.length)
 		stream.off('aborted', onAborted)
 		stream.off('data', onData)

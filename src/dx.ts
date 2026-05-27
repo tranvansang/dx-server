@@ -4,54 +4,50 @@ import {AsyncLocalStorage} from 'node:async_hooks'
 import {type DxContext, writeRes} from './dxHelpers.js'
 import type {SendFileOptions} from './staticHelpers.js'
 
-export interface Chainable<
-	R = any,
-	Next = (...np: any[]) => any,
-> {
+export interface Chainable<R = any, Next = (...np: any[]) => any> {
 	(next: Next): R
 }
 
-export interface Context<
-	T,
-	Params extends any[] = any[],
-	R = any,
-	Next = (...np: any[]) => any,
-> {
+export interface Context<T, Params extends any[] = any[], R = any, Next = (...np: any[]) => any> {
 	value: Awaited<T> // can be undefined
 	get(req: IncomingMessage): T
 	set(req: IncomingMessage, value: T): void
 	(...params: Params): Promise<T>
 	chain(...params: Params): Chainable<R, Next>
 }
-export function makeDxContext<
-	T,
-	Params extends any[] = any[],
-	R = any,
-	Next = (...np: any[]) => any,
->(maker: (...params: Params) => T | Promise<T>): Context<T, Params, R, Next> {
+export function makeDxContext<T, Params extends any[] = any[], R = any, Next = (...np: any[]) => any>(
+	maker: (...params: Params) => T | Promise<T>,
+): Context<T, Params, R, Next> {
 	const promiseMap = new WeakMap<IncomingMessage, Promise<T>>()
 	const valueMap = new WeakMap<IncomingMessage, T>()
 	const context = ((...params: Params) => {
 		const req = getReq()
-		if (!promiseMap.has(req)) promiseMap.set(req, (async () => {
-			const value = await maker(...params)
-			valueMap.set(req, value)
-			return value
-		})())
+		if (!promiseMap.has(req))
+			promiseMap.set(
+				req,
+				(async () => {
+					const value = await maker(...params)
+					valueMap.set(req, value)
+					return value
+				})(),
+			)
 		return promiseMap.get(req)!
 	}) as Context<T, Params, R, Next>
 	Object.defineProperty(context, 'value', {
-		get() {return valueMap.get(getReq())},
+		get() {
+			return valueMap.get(getReq())
+		},
 		set(value) {
 			const req = getReq()
 			promiseMap.set(req, Promise.resolve(value))
 			valueMap.set(req, value)
-		}
+		},
 	})
-	context.chain = ((...params: Params) => (async (next: Next) => {
-		await context(...params)
-		return (next as (...args: any[]) => any)()
-	})) as Context<T, Params, R, Next>['chain']
+	context.chain = ((...params: Params) =>
+		async (next: Next) => {
+			await context(...params)
+			return (next as (...args: any[]) => any)()
+		}) as Context<T, Params, R, Next>['chain']
 	context.set = (req, value) => {
 		promiseMap.set(req, Promise.resolve(value))
 		valueMap.set(req, value)
@@ -64,14 +60,14 @@ const requestStorage = new AsyncLocalStorage<{
 	req: IncomingMessage
 	res: ServerResponse
 }>()
-const dxContext = makeDxContext<DxContext>(options => ({...options} as DxContext))
+const dxContext = makeDxContext<DxContext>(options => ({...options}) as DxContext)
 export function dxServer(
 	req: IncomingMessage,
 	res: ServerResponse,
 	options: {
 		jsonBeautify?: boolean
 		disableEtag?: boolean
-	} = {}
+	} = {},
 ): Chainable {
 	return async next => {
 		dxContext.set(req, {...options} as DxContext)
@@ -85,10 +81,14 @@ export function dxServer(
 // url: full url without server, protocol, port.
 // headers: if headers are repeated, they are joined by comma. Header names are lowercased.
 // rawHeaders: list of header name and value in a flat array. Case is preserved.
-export function getReq() {return requestStorage.getStore()!.req}
-export function getRes() {return requestStorage.getStore()!.res}
+export function getReq() {
+	return requestStorage.getStore()!.req
+}
+export function getRes() {
+	return requestStorage.getStore()!.res
+}
 
-export function setText(text: string, {status}: { status?: number } = {}) {
+export function setText(text: string, {status}: {status?: number} = {}) {
 	const res = getRes()
 	const dx = dxContext.value
 	if (status) res.statusCode = status
@@ -96,7 +96,7 @@ export function setText(text: string, {status}: { status?: number } = {}) {
 	dx.type = 'text'
 }
 
-export function setEmpty({status}: { status?: number } = {}) {
+export function setEmpty({status}: {status?: number} = {}) {
 	const res = getRes()
 	const dx = dxContext.value
 	if (status) res.statusCode = status
@@ -104,7 +104,7 @@ export function setEmpty({status}: { status?: number } = {}) {
 	dx.type = 'empty'
 }
 
-export function setHtml(html: string, opts: { status?: number } = {}) {
+export function setHtml(html: string, opts: {status?: number} = {}) {
 	setText(html, opts)
 	const dx = dxContext.value
 	dx.type = 'html'
@@ -117,7 +117,7 @@ export function setFile(filePath: string, options?: SendFileOptions) {
 	dx.options = options
 }
 
-export function setBuffer(buffer: Buffer, {status}: { status?: number } = {}) {
+export function setBuffer(buffer: Buffer, {status}: {status?: number} = {}) {
 	const res = getRes()
 	const dx = dxContext.value
 	if (status) res.statusCode = status
@@ -125,7 +125,7 @@ export function setBuffer(buffer: Buffer, {status}: { status?: number } = {}) {
 	dx.type = 'buffer'
 }
 
-export function setNodeStream(stream: Readable, {status}: { status?: number } = {}) {
+export function setNodeStream(stream: Readable, {status}: {status?: number} = {}) {
 	const res = getRes()
 	const dx = dxContext.value
 	if (status) res.statusCode = status
@@ -133,7 +133,7 @@ export function setNodeStream(stream: Readable, {status}: { status?: number } = 
 	dx.type = 'nodeStream'
 }
 
-export function setWebStream(stream: ReadableStream, {status}: { status?: number } = {}) {
+export function setWebStream(stream: ReadableStream, {status}: {status?: number} = {}) {
 	const res = getRes()
 	const dx = dxContext.value
 	if (status) res.statusCode = status
@@ -141,7 +141,7 @@ export function setWebStream(stream: ReadableStream, {status}: { status?: number
 	dx.type = 'webStream'
 }
 
-export function setJson(json: any, {status}: { status?: number } = {}) {
+export function setJson(json: any, {status}: {status?: number} = {}) {
 	const res = getRes()
 	if (status) res.statusCode = status
 

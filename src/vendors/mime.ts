@@ -1,12 +1,15 @@
 import mimeDbRaw from './mimeDb.js'
 import {mimeScore} from './mimeScore.js'
 
-const mimeDb: Record<string, {
-	source?: string
-	charset?: string
-	compressible?: boolean
-	extensions?: string[]
-}> = mimeDbRaw
+const mimeDb: Record<
+	string,
+	{
+		source?: string
+		charset?: string
+		compressible?: boolean
+		extensions?: string[]
+	}
+> = mimeDbRaw
 
 const extensionToMime: Record<string, string | undefined> = Object.create(null)
 

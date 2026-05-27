@@ -38,18 +38,18 @@ export default function makeLogger(log = logJson) {
 				process.env.NODE_ENV === 'production'
 					? req.headers
 					: Object.fromEntries(
-						Object.entries(req.headers).filter(([k]) =>
-							[
-								'host',
-								'referer',
-								'referrer',
-								'user-agent',
-								'x-forwarded-proto',
-								'x-forwarded-host',
-								'x-forwarded-for',
-							].includes(k),
+							Object.entries(req.headers).filter(([k]) =>
+								[
+									'host',
+									'referer',
+									'referrer',
+									'user-agent',
+									'x-forwarded-proto',
+									'x-forwarded-host',
+									'x-forwarded-for',
+								].includes(k),
+							),
 						),
-					),
 		})
 
 		res.once('finish', end).once('close', end).once('error', end)

@@ -10,17 +10,19 @@ interface RouteContext {
 	matched: URLPatternResult
 	next(): any
 }
-interface Route {(context: RouteContext): any}
-interface Routes {[k: string]: Route}
+interface Route {
+	(context: RouteContext): any
+}
+interface Routes {
+	[k: string]: Route
+}
 
 interface RouterOptions extends URLPatternOptions {
 	prefix?: string
 }
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods
-const allMethods = [
-	'get', 'head', 'post', 'put', 'delete', 'connect', 'options', 'trace', 'patch'
-] as const
+const allMethods = ['get', 'head', 'post', 'put', 'delete', 'connect', 'options', 'trace', 'patch'] as const
 // typescript does not support method multi-signature for object properties
 // type Router = {
 // 	[K in typeof allMethods[number]]: ((routes: Routes, options?: RouterOptions) => Chainable)
@@ -56,15 +58,17 @@ function makeRouter(
 	routes: [pattern: string, route: Route][],
 	{prefix = ''}: RouterOptions = {},
 ): Chainable {
-	const routeWithUrlPatterns = routes.map(([pattern, handler]) => [new URLPattern({pathname: `${prefix}${pattern}`}), handler] as const)
+	const routeWithUrlPatterns = routes.map(
+		([pattern, handler]) => [new URLPattern({pathname: `${prefix}${pattern}`}), handler] as const,
+	)
 	return next => {
 		const req = getReq()
 		if (method !== undefined && req.method !== method.toUpperCase()) return next()
 		for (const [urlPattern, handler] of routeWithUrlPatterns) {
-// '' matches nothing
-// '/' matches both https://example.com and https://example.com/
-// '/foo' matches https://example.com/foo but not https://example.com/foo/
-// '/foo/' matches https://example.com/foo/ but not https://example.com/foo
+			// '' matches nothing
+			// '/' matches both https://example.com and https://example.com/
+			// '/foo' matches https://example.com/foo but not https://example.com/foo/
+			// '/foo/' matches https://example.com/foo/ but not https://example.com/foo
 
 			// path can be '*' for OPTIONS request
 			// to test: curl -X OPTIONS --request-target '*' http://localhost:3000 -D -
@@ -86,7 +90,7 @@ export const router = {
 		return typeof params[0] === 'string'
 			? makeRouter(undefined, [[params[0], params[1]]], params[2])
 			: makeRouter(undefined, Object.entries(params[0]), params[1])
-	}
+	},
 } as Router
 
 for (const method of allMethods) (router as any)[method] = router.method.bind(router, method)

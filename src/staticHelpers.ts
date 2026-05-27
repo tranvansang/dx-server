@@ -6,8 +6,8 @@ import {contentTypeForExtension} from './vendors/mime.js'
 import {fresh, parseHttpDate, parseTokenList} from './vendors/fresh.js'
 import {parseRange} from './vendors/rangeParser.js'
 import {createReadStream} from 'node:fs'
-import {onFinished} from './vendors/onFinished.js'
 import {promisify} from 'node:util'
+import {pipeline} from 'node:stream/promises'
 
 const BYTES_RANGE_REGEXP = /^ *bytes=/
 const UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/
@@ -206,23 +206,8 @@ export async function sendFileTrusted(
 	// HEAD support
 	if (req.method === 'HEAD') return void await promisify(res.end.bind(res))()
 
-	// Weak ETag path: stream file
-	const stream = createReadStream(pathname, {start, end})
-	stream.pipe(res)
-
-	const defer = Promise.withResolvers<void>()
-
-	onFinished(res, cleanup)
-	stream.on('error', err => {
-		cleanup()
-		defer.reject(err)
-	})
-	stream.on('end', defer.resolve)
-	function cleanup () {
-		stream.destroy()
-	}
-
-	return defer.promise
+	// stream file: pipeline awaits res 'finish' (full flush) and destroys the source on error
+	await pipeline(createReadStream(pathname, {start, end}), res)
 }
 
 function isRangeFresh (req: IncomingMessage, res: ServerResponse) {

@@ -10,14 +10,14 @@ import {promisify} from 'node:util'
 import {pipeline} from 'node:stream/promises'
 
 export type HttpError = Error & {statusCode: number}
-function httpError(message: string, statusCode: number): HttpError {
+function httpError(message: string, statusCode: number) {
 	const e = new Error(message) as HttpError
 	e.statusCode = statusCode
 	return e
 }
 
-const BYTES_RANGE_REGEXP = /^ *bytes=/
-const UP_PATH_REGEXP = /(?:^|[\\/])\.\.(?:[\\/]|$)/
+const bytesRangeRegexp = /^ *bytes=/
+const upPathRegexp = /(?:^|[\\/])\.\.(?:[\\/]|$)/
 
 export interface SendFileOptions {
 	allowDotfiles?: boolean
@@ -62,7 +62,7 @@ export async function sendFileTrusted(
 		pathname = path.normalize(`.${path.sep}${pathname}`)
 
 		// malicious path
-		if (UP_PATH_REGEXP.test(pathname)) throw httpError('Forbidden', 403)
+		if (upPathRegexp.test(pathname)) throw httpError('Forbidden', 403)
 
 		// explode path parts
 		parts = pathname.split(path.sep)
@@ -71,7 +71,7 @@ export async function sendFileTrusted(
 		pathname = path.normalize(path.join(root, pathname))
 	} else {
 		// malicious path
-		if (UP_PATH_REGEXP.test(pathname)) throw httpError('Forbidden', 403)
+		if (upPathRegexp.test(pathname)) throw httpError('Forbidden', 403)
 
 		// explode path parts
 		parts = path.normalize(pathname).split(path.sep)
@@ -173,7 +173,7 @@ export async function sendFileTrusted(
 
 	// Range support
 	let ranges = req.headers.range
-	if (!disableAcceptRanges && BYTES_RANGE_REGEXP.test(ranges ?? '')) {
+	if (!disableAcceptRanges && bytesRangeRegexp.test(ranges ?? '')) {
 		// parse
 		let rangesNum = parseRange(len, ranges, {combine: true})
 

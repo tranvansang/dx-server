@@ -7,7 +7,7 @@
  * type       = token
  * subtype    = token
  */
-const TYPE_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+$/
+const typeRegexp = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+$/
 /**
  * RegExp to match *( ";" parameter ) in RFC 7231 sec 3.1.1.1
  *
@@ -22,16 +22,16 @@ const TYPE_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+\/[!#$%&'*+.^_`|~0-9A-Za-z-]+$/
  * obs-text      = %x80-FF
  * quoted-pair   = "\" ( HTAB / SP / VCHAR / obs-text )
  */
-const PARAM_REGEXP = /; *([!#$%&'*+.^_`|~0-9A-Za-z-]+) *= *("(?:[\u000b\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\u000b\u0020-\u00ff])*"|[!#$%&'*+.^_`|~0-9A-Za-z-]+) */g // eslint-disable-line no-control-regex
-const TEXT_REGEXP = /^[\u000b\u0020-\u007e\u0080-\u00ff]+$/ // eslint-disable-line no-control-regex
-const TOKEN_REGEXP = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/
+const paramRegexp = /; *([!#$%&'*+.^_`|~0-9A-Za-z-]+) *= *("(?:[\u000b\u0020\u0021\u0023-\u005b\u005d-\u007e\u0080-\u00ff]|\\[\u000b\u0020-\u00ff])*"|[!#$%&'*+.^_`|~0-9A-Za-z-]+) */g // eslint-disable-line no-control-regex
+const textRegexp = /^[\u000b\u0020-\u007e\u0080-\u00ff]+$/ // eslint-disable-line no-control-regex
+const tokenRegexp = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/
 /**
  * RegExp to match quoted-pair in RFC 7230 sec 3.2.6
  *
  * quoted-pair = "\" ( HTAB / SP / VCHAR / obs-text )
  * obs-text    = %x80-FF
  */
-const QESC_REGEXP = /\\([\u000b\u0020-\u00ff])/g // eslint-disable-line no-control-regex
+const qescRegexp = /\\([\u000b\u0020-\u00ff])/g // eslint-disable-line no-control-regex
 
 export function parseContentType (header: string) {
 	let index = header.indexOf(';')
@@ -39,7 +39,7 @@ export function parseContentType (header: string) {
 		? header.slice(0, index).trim()
 		: header.trim()
 
-	if (!TYPE_REGEXP.test(mediaType)) throw new TypeError(`invalid media type: ${mediaType}`)
+	if (!typeRegexp.test(mediaType)) throw new TypeError(`invalid media type: ${mediaType}`)
 	const parameters: Record<string, string> = Object.create(null)
 
 	// parse parameters
@@ -48,7 +48,7 @@ export function parseContentType (header: string) {
 		let match
 		let value
 
-		const regexp = new RegExp(PARAM_REGEXP)
+		const regexp = new RegExp(paramRegexp)
 		regexp.lastIndex = index
 
 		while ((match = regexp.exec(header))) {
@@ -62,7 +62,7 @@ export function parseContentType (header: string) {
 				// remove quotes
 				value = value.slice(1, -1)
 				// remove escapes
-				if (value.indexOf('\\') !== -1) value = value.replace(QESC_REGEXP, '$1')
+				if (value.indexOf('\\') !== -1) value = value.replace(qescRegexp, '$1')
 			}
 
 			parameters[key] = value
@@ -77,20 +77,20 @@ export function parseContentType (header: string) {
 /**
  * RegExp to match chars that must be quoted-pair in RFC 7230 sec 3.2.6
  */
-const QUOTE_REGEXP = /([\\"])/g
+const quoteRegexp = /([\\"])/g
 function qstring (str: string) {
 	// no need to quote tokens
-	if (TOKEN_REGEXP.test(str)) return str
+	if (tokenRegexp.test(str)) return str
 
-	if (str.length > 0 && !TEXT_REGEXP.test(str)) throw new TypeError(`invalid parameter value: ${str}`)
-	return `"${str.replace(QUOTE_REGEXP, '\\$1')}"`
+	if (str.length > 0 && !textRegexp.test(str)) throw new TypeError(`invalid parameter value: ${str}`)
+	return `"${str.replace(quoteRegexp, '\\$1')}"`
 }
 
 function formatContentType({mediaType, parameters}: {
 	mediaType: string
 	parameters?: Record<string, string>
 }) {
-	if (!mediaType || !TYPE_REGEXP.test(mediaType)) throw new TypeError(`invalid type: ${mediaType}`)
+	if (!mediaType || !typeRegexp.test(mediaType)) throw new TypeError(`invalid type: ${mediaType}`)
 	return `${mediaType}${
 		parameters
 			? Object.keys(parameters).sort().map(key => `; ${key}=${qstring(parameters[key])}`).join('')

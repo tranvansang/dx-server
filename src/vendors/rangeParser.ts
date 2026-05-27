@@ -18,15 +18,11 @@ interface IndexedRange extends Range {
 export type Ranges = Range[] & {type: string}
 
 export function parseRange(size: number, str: string | undefined, options?: {combine?: boolean}): Ranges | -1 | -2 {
-	if (typeof str !== 'string') {
-		throw new TypeError('argument str must be a string')
-	}
+	if (typeof str !== 'string') throw new TypeError('argument str must be a string')
 
 	const index = str.indexOf('=')
 
-	if (index === -1) {
-		return -2
-	}
+	if (index === -1) return -2
 
 	// split the range string
 	const arr = str.slice(index + 1).split(',')
@@ -46,19 +42,13 @@ export function parseRange(size: number, str: string | undefined, options?: {com
 			start = size - end
 			end = size - 1
 			// nnn-
-		} else if (isNaN(end)) {
-			end = size - 1
-		}
+		} else if (isNaN(end)) end = size - 1
 
 		// limit last-byte-pos to current length
-		if (end > size - 1) {
-			end = size - 1
-		}
+		if (end > size - 1) end = size - 1
 
 		// invalid or unsatisifiable
-		if (isNaN(start) || isNaN(end) || start > end || start < 0) {
-			continue
-		}
+		if (isNaN(start) || isNaN(end) || start > end || start < 0) continue
 
 		// add range
 		ranges.push({
@@ -67,10 +57,8 @@ export function parseRange(size: number, str: string | undefined, options?: {com
 		})
 	}
 
-	if (ranges.length < 1) {
-		// unsatisifiable
-		return -1
-	}
+	// unsatisifiable
+	if (ranges.length < 1) return -1
 
 	return options && options.combine
 		? combineRanges(ranges)

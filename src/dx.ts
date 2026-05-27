@@ -85,8 +85,8 @@ export function dxServer(
 // url: full url without server, protocol, port.
 // headers: if headers are repeated, they are joined by comma. Header names are lowercased.
 // rawHeaders: list of header name and value in a flat array. Case is preserved.
-export function getReq(): IncomingMessage {return requestStorage.getStore()!.req}
-export function getRes(): ServerResponse {return requestStorage.getStore()!.res}
+export function getReq() {return requestStorage.getStore()!.req}
+export function getRes() {return requestStorage.getStore()!.res}
 
 export function setText(text: string, {status}: { status?: number } = {}) {
 	const res = getRes()

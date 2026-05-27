@@ -1,13 +1,12 @@
 // etag: https://github.com/jshttp/etag/blob/b9f0642256e63654287299d205bc6ced71b1a228/index.js#L39
-import crypto, {createHash} from 'node:crypto'
+import {createHash} from 'node:crypto'
 import type {IncomingMessage} from 'node:http'
 import {createReadStream, type Stats} from 'node:fs'
 
 export function entityTag(buf: Buffer, weak?: boolean) {
 	// pre-computed empty
 	return buf.length
-		? `${buf.length.toString(16)}-${crypto
-			.createHash('sha1')
+		? `${buf.length.toString(16)}-${createHash('sha1')
 			.update(buf)
 			.digest('base64')
 			.substring(0, 27)}"`
@@ -32,7 +31,7 @@ export async function entityTagPath(fileStat: Stats, filePath: string, weak?: bo
 	// same weak eTag: 2 resources might be semantically equivalent, but not byte-for-byte identical
 }
 
-const CACHE_CONTROL_NO_CACHE_REGEXP = /(?:^|,)\s*?no-cache\s*?(?:,|$)/
+const cacheControlNoCacheRegexp = /(?:^|,)\s*?no-cache\s*?(?:,|$)/
 export function statTag(stat: Stats) {
 	const mtime = stat.mtime.getTime().toString(16)
 	const size = stat.size.toString(16)
@@ -48,7 +47,7 @@ export function isFreshETag(req: IncomingMessage, etag: string) {
 	// to support end-to-end reload requests
 	// https://tools.ietf.org/html/rfc2616#section-14.9.4
 	const cacheControl = req.headers['cache-control']
-	if (cacheControl && CACHE_CONTROL_NO_CACHE_REGEXP.test(cacheControl)) return
+	if (cacheControl && cacheControlNoCacheRegexp.test(cacheControl)) return
 
 	if (noneMatch && noneMatch !== '*') {
 		if (!etag) return
@@ -74,7 +73,7 @@ export function isFreshModifiedSince(req: IncomingMessage, lastModified: string)
 	// to support end-to-end reload requests
 	// https://tools.ietf.org/html/rfc2616#section-14.9.4
 	const cacheControl = req.headers['cache-control']
-	if (cacheControl && CACHE_CONTROL_NO_CACHE_REGEXP.test(cacheControl)) return
+	if (cacheControl && cacheControlNoCacheRegexp.test(cacheControl)) return
 
 	if (modifiedSince && lastModified) {
 		const lastModifiedDate = Date.parse(lastModified)
@@ -93,9 +92,7 @@ function parseTokenList (str: string) {
 	for (let i = 0, len = str.length; i < len; i++) {
 		switch (str.charCodeAt(i)) {
 			case 0x20: /*   */
-				if (start === end) {
-					start = end = i + 1
-				}
+				if (start === end) start = end = i + 1
 				break
 			case 0x2c: /* , */
 				list.push(str.substring(start, end))

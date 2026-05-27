@@ -55,10 +55,6 @@ export type DxContext = {
 	})
 
 export async function writeRes(req: IncomingMessage, res: ServerResponse, {type, data, charset, jsonBeautify, disableEtag, options}: DxContext) {
-	const setContentType = (contentType: string) => {
-		if (res.headersSent || res.getHeader('content-type')) return
-		res.setHeader('content-type', `${contentType}${charset ? `; charset=${charset}` : ''}`)
-	}
 	let bufferOrStream
 
 	switch (type) {
@@ -163,5 +159,10 @@ export async function writeRes(req: IncomingMessage, res: ServerResponse, {type,
 		}
 
 		await promisify(res.end.bind(res))()
+	}
+
+	function setContentType(contentType: string) {
+		if (res.headersSent || res.getHeader('content-type')) return
+		res.setHeader('content-type', `${contentType}${charset ? `; charset=${charset}` : ''}`)
 	}
 }

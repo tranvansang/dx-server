@@ -1,7 +1,7 @@
 // 'mime-score' back-ported to CommonJS
 
 // Score RFC facets (see https://tools.ietf.org/html/rfc6838#section-3)
-const FACET_SCORES = {
+const facetScores = {
 	'prs.': 100,
 	'x-': 200,
 	'x.': 300,
@@ -10,14 +10,14 @@ const FACET_SCORES = {
 }
 
 // Score mime source (Logic originally from `jshttp/mime-types` module)
-const SOURCE_SCORES = {
+const sourceScores = {
 	nginx: 10,
 	apache: 20,
 	iana: 40,
 	default: 30 // definitions added by `jshttp/mime-db` project?
 }
 
-const TYPE_SCORES = {
+const typeScores = {
 	// prefer application/xml over text/xml
 	// prefer application/rtf over text/rtf
 	application: 1,
@@ -38,17 +38,15 @@ const TYPE_SCORES = {
  * total score.  The higher the score, the more "official" the type.
  */
 export function mimeScore(mimeType: string, source = 'default') {
-	if (mimeType === 'application/octet-stream') {
-		return 0
-	}
+	if (mimeType === 'application/octet-stream') return 0
 
 	const [type, subtype] = mimeType.split('/')
 
 	const facet = subtype.replace(/(\.|x-).*/, '$1')
 
-	const facetScore = FACET_SCORES[facet as keyof typeof FACET_SCORES] || FACET_SCORES.default
-	const sourceScore = SOURCE_SCORES[source as keyof typeof SOURCE_SCORES] || SOURCE_SCORES.default
-	const typeScore = TYPE_SCORES[type as keyof typeof TYPE_SCORES] || TYPE_SCORES.default
+	const facetScore = facetScores[facet as keyof typeof facetScores] || facetScores.default
+	const sourceScore = sourceScores[source as keyof typeof sourceScores] || sourceScores.default
+	const typeScore = typeScores[type as keyof typeof typeScores] || typeScores.default
 
 	// All else being equal prefer shorter types
 	const lengthScore = 1 - mimeType.length / 100

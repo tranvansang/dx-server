@@ -31,16 +31,16 @@ export function contentTypeForExtension(extension: string) {
 	return mimeType
 }
 
-const EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/
-const TEXT_TYPE_REGEXP = /^text\//i
+const extractTypeRegexp = /^\s*([^;\s]*)(?:;|\s|$)/
+const textTypeRegexp = /^text\//i
 
 function determineCharset(type: string) {
 	// _TODO: use media-typer
-	const match = EXTRACT_TYPE_REGEXP.exec(type)
+	const match = extractTypeRegexp.exec(type)
 	const mime = match && mimeDb[match[1].toLowerCase()]
 
 	if (mime?.charset) return mime.charset
 
 	// default text/* to utf-8
-	if (match && TEXT_TYPE_REGEXP.test(match[1])) return 'UTF-8'
+	if (match && textTypeRegexp.test(match[1])) return 'UTF-8'
 }

@@ -1,4 +1,4 @@
-const CACHE_CONTROL_NO_CACHE_REGEXP = /(?:^|,)\s*?no-cache\s*?(?:,|$)/
+const cacheControlNoCacheRegexp = /(?:^|,)\s*?no-cache\s*?(?:,|$)/
 
 /**
  * Check freshness of the response using request and response headers.
@@ -15,35 +15,25 @@ export function fresh(reqHeaders: Record<string, any>, resHeaders: Record<string
 	const noneMatch = reqHeaders['if-none-match']
 
 	// unconditional request
-	if (!modifiedSince && !noneMatch) {
-		return false
-	}
+	if (!modifiedSince && !noneMatch) return false
 
 	// Always return stale when Cache-Control: no-cache
 	// to support end-to-end reload requests
 	// https://tools.ietf.org/html/rfc2616#section-14.9.4
 	const cacheControl = reqHeaders['cache-control']
-	if (cacheControl && CACHE_CONTROL_NO_CACHE_REGEXP.test(cacheControl)) {
-		return false
-	}
+	if (cacheControl && cacheControlNoCacheRegexp.test(cacheControl)) return false
 
 	// if-none-match takes precedent over if-modified-since
 	if (noneMatch) {
-		if (noneMatch === '*') {
-			return true
-		}
+		if (noneMatch === '*') return true
 		const etag = resHeaders.etag
 
-		if (!etag) {
-			return false
-		}
+		if (!etag) return false
 
 		const matches = parseTokenList(noneMatch)
 		for (let i = 0; i < matches.length; i++) {
 			const match = matches[i]
-			if (match === etag || match === 'W/' + etag || 'W/' + match === etag) {
-				return true
-			}
+			if (match === etag || match === 'W/' + etag || 'W/' + match === etag) return true
 		}
 
 		return false
@@ -54,9 +44,7 @@ export function fresh(reqHeaders: Record<string, any>, resHeaders: Record<string
 		const lastModified = resHeaders['last-modified']
 		const modifiedStale = !lastModified || !(parseHttpDate(lastModified) <= parseHttpDate(modifiedSince))
 
-		if (modifiedStale) {
-			return false
-		}
+		if (modifiedStale) return false
 	}
 
 	return true
@@ -93,9 +81,7 @@ export function parseTokenList(str: string) {
 	for (; i < len; i++) {
 		switch (str.charCodeAt(i)) {
 			case 0x20: /*   */
-				if (start === end) {
-					start = end = i + 1
-				}
+				if (start === end) start = end = i + 1
 				break
 			case 0x2c: /* , */
 				list.push(str.substring(start, end))

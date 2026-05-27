@@ -66,9 +66,10 @@ export async function writeRes(
 	switch (type) {
 		case 'text':
 			setContentType('text/plain')
+			bufferOrStream = Buffer.from(data ?? '', charset)
+			break
 		case 'html':
 			setContentType('text/html')
-			// shared with text
 			bufferOrStream = Buffer.from(data ?? '', charset)
 			break
 		case 'buffer':

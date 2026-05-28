@@ -33,10 +33,21 @@ export async function bufferFromReq(req: IncomingMessage, options?: Partial<Buff
 	// read
 	const encoding = (req.headers['content-encoding'] ?? 'identity').toLowerCase()
 	const stream = getContentStream(req, encoding)
-	return await readStream(stream, {
-		length: encoding === 'identity' ? contentLength : undefined,
-		limit: bodyLimit,
-	})
+	try {
+		return await readStream(stream, {
+			length: encoding === 'identity' ? contentLength : undefined,
+			limit: bodyLimit,
+		})
+	} catch (e) {
+		// On rejection (e.g. body limit exceeded) tear down the decompressor and unpipe it
+		// from req. Otherwise req keeps feeding the decompressor and a zip-bomb keeps inflating
+		// long after the limit fired. req itself is left alive so error middleware can respond.
+		if (stream !== req) {
+			req.unpipe(stream as NodeJS.WritableStream)
+			stream.destroy()
+		}
+		throw e
+	}
 }
 
 // if content-type is not as expected, return undefined

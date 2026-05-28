@@ -8,7 +8,7 @@ export function logJson(json: any) {
 let requestCount = 0
 export default function makeLogger(log = logJson, {
 	timezoneOffset = 0
-}) {
+} = {}) {
 	return function logger(next: () => any) {
 		const res = getRes()
 		const req = getReq()

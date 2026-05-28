@@ -42,10 +42,11 @@ test('setHtml: text/html', async () => {
 	strictEqual(res.body.toString(), '<b>x</b>')
 })
 
-test('setJson: application/json, compact body', async () => {
+test('setJson: application/json (no charset label), compact body', async () => {
 	const res = await call(() => setJson({a: 1}))
 	strictEqual(res.status, 200)
-	match(res.headers['content-type'], /application\/json/)
+	// JSON is always UTF-8 with no charset parameter (RFC 8259)
+	strictEqual(res.headers['content-type'], 'application/json')
 	strictEqual(res.body.toString(), '{"a":1}')
 })
 
@@ -207,12 +208,76 @@ test('common option charset: drives the body encoding and the content-type label
 	deepEqual([...res.body], [0x63, 0x61, 0x66, 0xe9])
 })
 
-test('common option disableEtag: suppresses the ETag per setter', async () => {
+test('charset labels the Content-Type on setBuffer and the stream setters', async () => {
+	strictEqual(
+		(await call(() => setBuffer(Buffer.from('x'), {charset: 'utf-8'}))).headers['content-type'],
+		'application/octet-stream; charset=utf-8',
+	)
+	strictEqual(
+		(await call(() => setNodeStream(Readable.from(['x']), {charset: 'utf-8'}))).headers['content-type'],
+		'application/octet-stream; charset=utf-8',
+	)
+	const web = () =>
+		setWebStream(
+			new ReadableStream({
+				start(c) {
+					c.enqueue(new Uint8Array([120]))
+					c.close()
+				},
+			}),
+			{charset: 'utf-8'},
+		)
+	strictEqual((await call(web)).headers['content-type'], 'application/octet-stream; charset=utf-8')
+})
+
+test('status applies on setHtml and setFile', async () => {
+	strictEqual((await call(() => setHtml('<b>x</b>', {status: 201}))).status, 201)
+	const dir = mkdtempSync(join(tmpdir(), 'dx-server-test-'))
+	try {
+		const f = join(dir, 'f.txt')
+		writeFileSync(f, 'data')
+		strictEqual((await call(() => setFile(f, {status: 206}))).status, 206)
+	} finally {
+		rmSync(dir, {recursive: true, force: true})
+	}
+})
+
+test('disableEtag suppresses the ETag on the buffer-backed setters', async () => {
 	strictEqual((await call(() => setText('hi', {disableEtag: true}))).headers.etag, undefined)
-	strictEqual((await call(() => setJson({a: 1}, {disableEtag: true}))).headers.etag, undefined)
+	strictEqual((await call(() => setHtml('<b>x</b>', {disableEtag: true}))).headers.etag, undefined)
 	strictEqual((await call(() => setBuffer(Buffer.from('x'), {disableEtag: true}))).headers.etag, undefined)
-	// without the option an ETag is still emitted
-	ok((await call(() => setText('hi'))).headers.etag, 'expected an ETag when disableEtag is not set')
+	strictEqual((await call(() => setJson({a: 1}, {disableEtag: true}))).headers.etag, undefined)
+	strictEqual((await call(() => setEmpty({disableEtag: true}))).headers.etag, undefined)
+	// without the option these types are ETagged by default
+	ok((await call(() => setText('hi'))).headers.etag, 'text is ETagged by default')
+	ok((await call(() => setEmpty())).headers.etag, 'empty responses are ETagged by default')
+})
+
+test('streams and redirects are never ETagged (so they take no disableEtag option)', async () => {
+	strictEqual((await call(() => setNodeStream(Readable.from(['x'])))).headers.etag, undefined)
+	const web = () =>
+		setWebStream(
+			new ReadableStream({
+				start(c) {
+					c.enqueue(new Uint8Array([120]))
+					c.close()
+				},
+			}),
+		)
+	strictEqual((await call(web)).headers.etag, undefined)
+	strictEqual((await call(() => setRedirect('/elsewhere', 302))).headers.etag, undefined)
+})
+
+test('setFile ETag is controlled by SendFileOptions.etag, not a disableEtag option', async () => {
+	const dir = mkdtempSync(join(tmpdir(), 'dx-server-test-'))
+	try {
+		const f = join(dir, 'f.txt')
+		writeFileSync(f, 'data')
+		ok((await call(() => setFile(f))).headers.etag, 'setFile emits a weak ETag by default')
+		strictEqual((await call(() => setFile(f, {etag: 'disabled'}))).headers.etag, undefined)
+	} finally {
+		rmSync(dir, {recursive: true, force: true})
+	}
 })
 
 test('common options coexist with status', async () => {

@@ -7,7 +7,7 @@ A modern, unopinionated, and performant Node.js server framework built on AsyncL
 
 ## Important caveats
 
-- **ETag is supported.** Static file serving defaults to a weak (mtime/size-based) ETag, while other responses (`setJson`, `setHtml`, `setText`, `setBuffer`, …) use a strong (content-based) ETag. Redirects get no ETag.
+- **ETag is supported.** Static file serving defaults to a weak (mtime/size-based) ETag, while other responses (`setJson`, `setHtml`, `setText`, `setBuffer`, …) use a strong (content-based) ETag. Redirects get no ETag. Disable it globally with `dxServer(req, res, {disableEtag: true})`, or per response with the setter's `disableEtag` option (for `setFile`, use `etag: 'disabled'`).
 - **Request compression is supported.** Request bodies with `Content-Encoding: gzip`, `deflate`, or `br` are decompressed automatically.
 - **Response compression is NOT supported.** dx-server never sets `Content-Encoding` on responses — handle response compression at the reverse proxy / CDN level.
 - **Static file serving supports Range requests.**
@@ -419,18 +419,18 @@ Options:
 
 #### Response Setters
 
-Setters only take a `{status?}` option (except `setRedirect`/`setFile`). To set response
-headers, use `getRes().setHeader(name, value)` before (or after) calling a setter.
+Each setter's options are inlined to expose only what its response type honors. To set arbitrary
+response headers, use `getRes().setHeader(name, value)` before (or after) a setter.
 
-- **`setJson(data, {status?})`** - Send JSON response (`application/json; charset=utf-8`)
-- **`setHtml(html, {status?})`** - Send HTML response (`text/html; charset=utf-8`)
-- **`setText(text, {status?})`** - Send plain text (`text/plain; charset=utf-8`)
-- **`setBuffer(buffer, {status?})`** - Send buffer (`application/octet-stream`)
-- **`setFile(path, options?)`** - Send file (see `SendFileOptions`)
-- **`setNodeStream(stream, {status?})`** - Send Node.js stream
-- **`setWebStream(stream, {status?})`** - Send Web stream
-- **`setRedirect(url, status)`** - Redirect response; `status` is `301 | 302` (required, positional)
-- **`setEmpty({status?})`** - Send empty response
+- **`setJson(data, {status?, disableEtag?})`** - JSON response (`application/json`; always UTF-8 per RFC 8259)
+- **`setHtml(html, {status?, charset?, disableEtag?})`** - HTML (`text/html; charset=utf-8`)
+- **`setText(text, {status?, charset?, disableEtag?})`** - plain text (`text/plain; charset=utf-8`)
+- **`setBuffer(buffer, {status?, charset?, disableEtag?})`** - buffer (`application/octet-stream`)
+- **`setFile(path, {status?, ...SendFileOptions})`** - file (charset/ETag via `SendFileOptions`)
+- **`setNodeStream(stream, {status?, charset?})`** - Node.js stream
+- **`setWebStream(stream, {status?, charset?})`** - Web stream
+- **`setRedirect(url, status)`** - redirect; `status` is `301 | 302` (required, positional)
+- **`setEmpty({status?, disableEtag?})`** - empty response
 
 #### Context Management
 
@@ -467,6 +467,8 @@ headers, use `getRes().setHeader(name, value)` before (or after) calling a sette
   	etag: 'weak', // 'weak' (default) | 'strong' | 'disabled'
   	disableLastModified: false,
   	disableFollowSymlinks: false, // set true to 403 files whose real path escapes root
+  	charset: undefined, // override the Content-Type charset; default comes from the file extension
+  	// (text/* -> utf-8). e.g. set 'utf-8' to force a charset on a type that has none.
   })
   ```
 

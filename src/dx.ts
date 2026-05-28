@@ -89,75 +89,89 @@ export function getRes() {
 	return requestStorage.getStore()!.res
 }
 
-// options common to every setter. charset and disableEtag are written onto the dx context and
-// consumed by writeRes; note charset/disableEtag only affect buffer-backed responses
-// (text/html/json/buffer/empty) — streams, files and redirects bypass that code path in writeRes.
-export interface ResponseOptions {
-	status?: number
-	charset?: BufferEncoding
-	disableEtag?: boolean
-}
+// Each setter inlines only the options its response type honors:
+//   - charset: text/html (body encoding + Content-Type label) and buffer/streams (Content-Type
+//     label). not on setJson (always UTF-8, RFC 8259), setEmpty, setRedirect; setFile takes it via
+//     SendFileOptions instead (its Content-Type is owned by sendFileTrusted).
+//   - disableEtag: the buffer-backed types (text/html/buffer/json/empty). not on streams or redirect
+//     (never ETagged) or setFile (use SendFileOptions.etag: 'disabled').
 
-function applyResponseOptions({status, charset, disableEtag}: ResponseOptions = {}) {
+export function setText(
+	text: string,
+	{status, charset, disableEtag}: {status?: number; charset?: BufferEncoding; disableEtag?: boolean} = {},
+) {
 	const dx = dxContext.value
 	if (status) getRes().statusCode = status
 	if (charset !== undefined) dx.charset = charset
 	if (disableEtag !== undefined) dx.disableEtag = disableEtag
-	return dx
-}
-
-export function setText(text: string, options: ResponseOptions = {}) {
-	const dx = applyResponseOptions(options)
 	dx.data = text
 	dx.type = 'text'
 }
 
-export function setEmpty(options: ResponseOptions = {}) {
-	const dx = applyResponseOptions(options)
-	dx.data = undefined
-	dx.type = 'empty'
-}
-
-export function setHtml(html: string, options: ResponseOptions = {}) {
+export function setHtml(
+	html: string,
+	options: {status?: number; charset?: BufferEncoding; disableEtag?: boolean} = {},
+) {
 	setText(html, options)
 	dxContext.value.type = 'html'
 }
 
-export function setFile(filePath: string, {status, disableEtag, ...options}: SendFileOptions & ResponseOptions = {}) {
-	// charset stays in `options` (SendFileOptions): for files the Content-Type is owned by
-	// sendFileTrusted, so charset must reach it there rather than the (inert-for-files) dx.charset.
-	const dx = applyResponseOptions({status, disableEtag})
+export function setBuffer(
+	buffer: Buffer,
+	{status, charset, disableEtag}: {status?: number; charset?: BufferEncoding; disableEtag?: boolean} = {},
+) {
+	const dx = dxContext.value
+	if (status) getRes().statusCode = status
+	if (charset !== undefined) dx.charset = charset
+	if (disableEtag !== undefined) dx.disableEtag = disableEtag
+	dx.data = buffer
+	dx.type = 'buffer'
+}
+
+export function setJson(json: any, {status, disableEtag}: {status?: number; disableEtag?: boolean} = {}) {
+	const dx = dxContext.value
+	if (status) getRes().statusCode = status
+	if (disableEtag !== undefined) dx.disableEtag = disableEtag
+	dx.data = json
+	dx.type = 'json'
+}
+
+export function setEmpty({status, disableEtag}: {status?: number; disableEtag?: boolean} = {}) {
+	const dx = dxContext.value
+	if (status) getRes().statusCode = status
+	if (disableEtag !== undefined) dx.disableEtag = disableEtag
+	dx.data = undefined
+	dx.type = 'empty'
+}
+
+export function setNodeStream(stream: Readable, {status, charset}: {status?: number; charset?: BufferEncoding} = {}) {
+	const dx = dxContext.value
+	if (status) getRes().statusCode = status
+	if (charset !== undefined) dx.charset = charset
+	dx.data = stream
+	dx.type = 'nodeStream'
+}
+
+export function setWebStream(stream: ReadableStream, {status, charset}: {status?: number; charset?: BufferEncoding} = {}) {
+	const dx = dxContext.value
+	if (status) getRes().statusCode = status
+	if (charset !== undefined) dx.charset = charset
+	dx.data = stream
+	dx.type = 'webStream'
+}
+
+export function setFile(filePath: string, {status, ...options}: SendFileOptions & {status?: number} = {}) {
+	// charset/etag for files come from SendFileOptions (stay in `options`), handled by sendFileTrusted
+	const dx = dxContext.value
+	if (status) getRes().statusCode = status
 	dx.data = filePath
 	dx.type = 'file'
 	dx.options = options
 }
 
-export function setBuffer(buffer: Buffer, options: ResponseOptions = {}) {
-	const dx = applyResponseOptions(options)
-	dx.data = buffer
-	dx.type = 'buffer'
-}
-
-export function setNodeStream(stream: Readable, options: ResponseOptions = {}) {
-	const dx = applyResponseOptions(options)
-	dx.data = stream
-	dx.type = 'nodeStream'
-}
-
-export function setWebStream(stream: ReadableStream, options: ResponseOptions = {}) {
-	const dx = applyResponseOptions(options)
-	dx.data = stream
-	dx.type = 'webStream'
-}
-
-export function setJson(json: any, options: ResponseOptions = {}) {
-	const dx = applyResponseOptions(options)
-	dx.data = json
-	dx.type = 'json'
-}
-
-export function setRedirect(url: string, status: 301 | 302, options: Omit<ResponseOptions, 'status'> = {}) {
-	const dx = applyResponseOptions({...options, status})
+export function setRedirect(url: string, status: 301 | 302) {
+	const dx = dxContext.value
+	getRes().statusCode = status
 	dx.data = url
 	dx.type = 'redirect'
 }

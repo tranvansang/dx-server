@@ -75,26 +75,28 @@ export async function writeRes(
 			break
 		case 'buffer':
 			setContentType('application/octet-stream')
-			buffer = data ?? Buffer.from('', charset)
+			buffer = data ?? Buffer.from('')
 			break
 		case 'json':
-			setContentType('application/json')
+			// JSON is always UTF-8 (RFC 8259) and application/json defines no charset parameter, so the
+			// charset option is intentionally ignored: no charset label and the body is UTF-8 encoded.
+			setContentType('application/json', false)
 			buffer =
 				data === undefined
-					? Buffer.from('', charset)
-					: Buffer.from(jsonBeautify ? JSON.stringify(data, null, 2) : JSON.stringify(data), charset)
+					? Buffer.from('')
+					: Buffer.from(jsonBeautify ? JSON.stringify(data, null, 2) : JSON.stringify(data))
 			break
 		case 'redirect':
 		case 'empty':
 			if (type === 'redirect') res.setHeader('location', data)
-			buffer = Buffer.from('', charset)
+			buffer = Buffer.from('')
 			break
 		// Streaming paths own res.end() themselves (via pipeline/sendFileTrusted) and must be
 		// awaited to fulfil the "chain resolves after flush" invariant.
 		case 'nodeStream':
 		case 'webStream':
 			if (!data) {
-				buffer = Buffer.from('', charset)
+				buffer = Buffer.from('')
 				break
 			}
 		case 'file':
@@ -162,10 +164,11 @@ export async function writeRes(
 
 	await awaitResFinished(res)
 
-	function setContentType(contentType: string) {
+	function setContentType(contentType: string, withCharset = true) {
 		if (res.headersSent || res.getHeader('content-type')) return
-		// only text/* carries a charset; binary (octet-stream) and JSON (always UTF-8 per RFC 8259) do not
-		const cs = charset ?? (contentType.startsWith('text/') ? 'utf-8' : undefined)
+		// text/* defaults to utf-8; an explicit charset option applies to any type. withCharset is
+		// false for JSON, which is always UTF-8 with no charset parameter (RFC 8259).
+		const cs = withCharset ? (charset ?? (contentType.startsWith('text/') ? 'utf-8' : undefined)) : undefined
 		res.setHeader('content-type', `${contentType}${cs ? `; charset=${cs}` : ''}`)
 	}
 }

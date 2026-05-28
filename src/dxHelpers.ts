@@ -146,7 +146,9 @@ export async function writeRes(
 	// } else
 	if (req.method !== 'HEAD') {
 		res.setHeader('content-length', buffer.length)
-		if (!disableEtag) {
+		// no ETag for redirects: the empty body would share the empty-body tag with other empty
+		// responses, so a cached If-None-Match could wrongly 304 a redirect (dropping Location)
+		if (!disableEtag && type !== 'redirect') {
 			const etag = entityTag(buffer)
 			res.setHeader('ETag', etag)
 			if (isFreshETag(req, etag)) {

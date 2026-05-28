@@ -3,6 +3,13 @@ import type {IncomingMessage} from 'node:http'
 import type {Readable} from 'node:stream'
 import {createBrotliDecompress, createGunzip, createInflate} from 'node:zlib'
 
+// body errors carry an HTTP status so error middleware can map them (413 too large, 400 malformed)
+function bodyError(message: string, statusCode: number) {
+	const e = new Error(message) as Error & {statusCode: number}
+	e.statusCode = statusCode
+	return e
+}
+
 // note: there might be multiple encodings applied to the stream
 // we only support one encoding
 export function getContentStream(req: IncomingMessage, encoding: string, disableInflate?: boolean) {
@@ -47,7 +54,7 @@ export async function readStream(
 	// check the length and limit options.
 	// note: we intentionally leave the stream paused,
 	// so users should handle the stream themselves.
-	if (limit !== undefined && length !== undefined && length > limit) throw new Error('request entity too large')
+	if (limit !== undefined && length !== undefined && length > limit) throw bodyError('request entity too large', 413)
 
 	let received = 0
 	const buffers: Buffer[] = []
@@ -75,7 +82,7 @@ export async function readStream(
 		if (completed) return
 		received += chunk.length
 		if (limit !== undefined && received > limit) {
-			done(new Error('request entity too large'))
+			done(bodyError('request entity too large', 413))
 		} else buffers.push(chunk)
 	}
 
@@ -83,11 +90,11 @@ export async function readStream(
 		done(err)
 	}
 	function onEnd() {
-		if (length !== undefined && received !== length) done(new Error('request size did not match content length'))
+		if (length !== undefined && received !== length) done(bodyError('request size did not match content length', 400))
 		else done(undefined, Buffer.concat(buffers))
 	}
 	function onAborted() {
-		done(new Error('request aborted'))
+		done(bodyError('request aborted', 400))
 	}
 	function onClose() {
 		buffers.splice(0, buffers.length)

@@ -6,17 +6,32 @@ export function logJson(json: any) {
 }
 
 let requestCount = 0
-export default function makeLogger(log = logJson) {
+export default function makeLogger(log = logJson, {
+	timezoneOffset = 0
+}) {
 	return function logger(next: () => any) {
 		const res = getRes()
 		const req = getReq()
 		const logId = requestCount++
+
 		const start = hrtime.bigint()
+		const now = new Date(Date.now() + timezoneOffset * 60 * 60 * 1000)
 
 		log({
 			level: 'info',
 			id: logId,
-			timestamp: new Date().toISOString(),
+			timestamp: [
+				[
+					now.getUTCFullYear(),
+					String(now.getUTCMonth() + 1).padStart(2, '0'),
+					String(now.getUTCDate()).padStart(2, '0'),
+				].join('-'),
+				[
+					String(now.getUTCHours()).padStart(2, '0'),
+					String(now.getUTCMinutes()).padStart(2, '0'),
+					[String(now.getUTCSeconds()).padStart(2, '0'), String(now.getUTCMilliseconds()).padStart(3, '0')].join('.'),
+				].join(':'),
+			].join('T'),
 			remoteAddress: req.socket.remoteAddress,
 			method: req.method,
 			url: req.url,

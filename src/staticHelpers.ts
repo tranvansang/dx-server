@@ -89,15 +89,14 @@ export async function sendFileTrusted(
 	// pathEndsWithSep
 	if (pathname[pathname.length - 1] === path.sep) throw httpError('Forbidden: directory access is not allowed', 403)
 
-	const fileStat = await stat(pathname)
-	// not found, check extensions
-	// if (err.code === 'ENOENT' && !path.extname(pathname) && !pathEndsWithSep) throw err
-	// switch (err.code) {
-	// 	case 'ENAMETOOLONG':
-	// 	case 'ENOENT':
-	// 	case 'ENOTDIR':
-	// 	default:
-	// }
+	let fileStat
+	try {
+		fileStat = await stat(pathname)
+	} catch (e) {
+		const code = (e as NodeJS.ErrnoException).code
+		if (code === 'ENOENT' || code === 'ENOTDIR' || code === 'ENAMETOOLONG') throw httpError('Not Found', 404)
+		throw e
+	}
 
 	if (fileStat.isDirectory()) throw httpError('Forbidden: directory access is not allowed', 403)
 

@@ -414,7 +414,10 @@ async function fetchStatic(options: Options, opts: FetchOpts = {}) {
 			req,
 			res,
 		)(() =>
-			chainStatic(pattern, options)((e: any) => {
+			chainStatic(
+				pattern,
+				options,
+			)((e: any) => {
 				if (!res.writableEnded && !res.destroyed) {
 					res.statusCode = e?.statusCode ?? 404
 					res.end()

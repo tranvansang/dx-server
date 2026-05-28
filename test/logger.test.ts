@@ -124,7 +124,10 @@ function tick() {
 
 async function call(mw: (next: () => any) => any, opts: {headers?: Record<string, string>} = {}) {
 	const server = new Server((req, res) => {
-		void dxServer(req, res)(() => mw(() => setText('ok'))).catch((e: any) => {
+		void dxServer(
+			req,
+			res,
+		)(() => mw(() => setText('ok'))).catch((e: any) => {
 			if (!res.writableEnded && !res.destroyed) {
 				res.statusCode = e?.statusCode ?? 500
 				res.end()

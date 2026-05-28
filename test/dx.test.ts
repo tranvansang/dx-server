@@ -261,7 +261,11 @@ async function call(
 	opts: {method?: string; path?: string; headers?: Record<string, string>; serverOptions?: any} = {},
 ) {
 	const server = new Server((req, res) => {
-		dxServer(req, res, opts.serverOptions)(async () => handler()).catch((e: any) => {
+		dxServer(
+			req,
+			res,
+			opts.serverOptions,
+		)(async () => handler()).catch((e: any) => {
 			if (!res.writableEnded && !res.destroyed) {
 				res.statusCode = e?.statusCode ?? 500
 				res.end()

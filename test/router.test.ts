@@ -130,7 +130,10 @@ async function runMiddleware(mw: Chainable, opts: {method: string; path: string}
 	const server = new Server((req, res) => {
 		req.method = opts.method
 		req.url = opts.path
-		void dxServer(req, res)(async () => {
+		void dxServer(
+			req,
+			res,
+		)(async () => {
 			await mw(() => (nextCalled = true))
 			if (!res.writableEnded) res.end()
 		}).catch(() => {
@@ -159,14 +162,15 @@ async function runMiddleware(mw: Chainable, opts: {method: string; path: string}
 
 async function call(mw: Chainable, opts: {method?: string; path?: string} = {}, fallback?: () => any) {
 	const server = new Server((req, res) => {
-		void dxServer(req, res)(() => mw(() => (fallback ? fallback() : setText('FALLBACK', {status: 404})))).catch(
-			(e: any) => {
-				if (!res.writableEnded && !res.destroyed) {
-					res.statusCode = e?.statusCode ?? 500
-					res.end()
-				}
-			},
-		)
+		void dxServer(
+			req,
+			res,
+		)(() => mw(() => (fallback ? fallback() : setText('FALLBACK', {status: 404})))).catch((e: any) => {
+			if (!res.writableEnded && !res.destroyed) {
+				res.statusCode = e?.statusCode ?? 500
+				res.end()
+			}
+		})
 	})
 	const port = await new Promise<number>(resolve =>
 		server.listen(0, () => resolve((server.address() as AddressInfo).port)),

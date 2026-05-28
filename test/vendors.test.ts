@@ -366,7 +366,13 @@ test('mimeScore: type scoring (video > audio = font > application > default)', (
 	const audio = mimeScore('audio/mp4')
 	const video = mimeScore('video/mp4')
 	const def = mimeScore('text/plain')
-	ok(Number.isFinite(app) && Number.isFinite(font) && Number.isFinite(audio) && Number.isFinite(video) && Number.isFinite(def))
+	ok(
+		Number.isFinite(app) &&
+			Number.isFinite(font) &&
+			Number.isFinite(audio) &&
+			Number.isFinite(video) &&
+			Number.isFinite(def),
+	)
 	ok(video > audio)
 	ok(audio > app)
 	ok(font > app)

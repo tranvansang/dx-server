@@ -121,6 +121,28 @@ test('first matching route wins; later patterns are not reached', async () => {
 	strictEqual((await call(mw, {path: '/dup2'})).body, 'second')
 })
 
+test('a GET route also answers HEAD (handler runs, body stripped)', async () => {
+	const mw = router.get('/page', () => setText('hello'))
+
+	// GET serves the full body
+	const get = await call(mw, {path: '/page', method: 'GET'})
+	strictEqual(get.status, 200)
+	strictEqual(get.body, 'hello')
+
+	// HEAD is dispatched to the same GET handler (status 200, not the 404 fallback),
+	// but writeRes strips the body for HEAD
+	const head = await call(mw, {path: '/page', method: 'HEAD'})
+	strictEqual(head.status, 200)
+	strictEqual(head.body, '')
+
+	// HEAD on an unregistered path still falls through to next()
+	strictEqual((await call(mw, {path: '/missing', method: 'HEAD'})).status, 404)
+
+	// HEAD maps to GET only — a non-GET route does not answer HEAD
+	const post = router.post('/page', () => setText('posted'))
+	strictEqual((await call(post, {path: '/page', method: 'HEAD'})).status, 404)
+})
+
 // Drives a router middleware inside a real dxServer context, reporting whether it fell
 // through to next(). The request method/url are overridden on the live req object so the
 // router observes them, letting us exercise methods (e.g. CONNECT) that node's http client

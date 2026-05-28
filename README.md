@@ -8,7 +8,7 @@ A modern, unopinionated, and performant Node.js server framework built on AsyncL
 ## Caveats
 
 - **ETag is supported.** Static file serving defaults to a weak (mtime/size-based) ETag, while other responses (`setJson`, `setHtml`, `setText`, `setBuffer`, …) use a strong (content-based) ETag. Redirects get no ETag. Disable it globally with `dxServer(req, res, {disableEtag: true})`, or per response with the setter's `disableEtag` option (for `setFile`, use `etag: 'disabled'`).
-- **Request compression is supported.** Request bodies with `Content-Encoding: gzip`, `deflate`, or `br` are decompressed automatically.
+- **Request compression is supported.** Request bodies with `Content-Encoding: gzip`, `deflate`, `br`, or `zstd` are decompressed automatically. `zstd` requires Node.js v22.15.0+ or v23.8.0+ (the version that added native Zstd support to `node:zlib`).
 - **Response compression is NOT supported.** dx-server never sets `Content-Encoding` on responses — handle response compression at the reverse proxy / CDN level.
 - **Static file serving supports Range requests.**
 

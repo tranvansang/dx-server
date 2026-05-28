@@ -1,7 +1,7 @@
 import {test} from 'node:test'
 import {strictEqual, deepEqual, ok, rejects, throws} from 'node:assert/strict'
 import {Readable} from 'node:stream'
-import {gzipSync, deflateSync, brotliCompressSync} from 'node:zlib'
+import {gzipSync, deflateSync, brotliCompressSync, zstdCompressSync} from 'node:zlib'
 import {
 	setBufferBodyDefaultOptions,
 	bufferFromReq,
@@ -70,6 +70,14 @@ test('bufferFromReq: br encoded body decodes correctly', async () => {
 	const original = 'brotli payload content'
 	const compressed = brotliCompressSync(Buffer.from(original))
 	const req = mockReq(compressed, {'content-encoding': 'br', 'content-length': String(compressed.length)})
+	const buf = await bufferFromReq(req)
+	strictEqual(buf!.toString(), original)
+})
+
+test('bufferFromReq: zstd encoded body decodes correctly', async () => {
+	const original = 'zstd payload content'
+	const compressed = zstdCompressSync(Buffer.from(original))
+	const req = mockReq(compressed, {'content-encoding': 'zstd', 'content-length': String(compressed.length)})
 	const buf = await bufferFromReq(req)
 	strictEqual(buf!.toString(), original)
 })
@@ -279,19 +287,16 @@ test('getContentStream: br returns a transform stream (not req)', () => {
 	stream.destroy()
 })
 
+test('getContentStream: zstd returns a transform stream (not req)', () => {
+	const req = mockReq('', {})
+	const stream = getContentStream(req, 'zstd')
+	ok(stream !== req)
+	stream.destroy()
+})
+
 test('getContentStream: unsupported encoding throws', () => {
 	const req = mockReq(undefined, {})
 	throws(() => getContentStream(req, 'unsupported'), /unsupported content-encoding/)
-})
-
-test('getContentStream: disableInflate with non-identity encoding throws', () => {
-	const req = mockReq(undefined, {})
-	throws(() => getContentStream(req, 'gzip', true), /content-encoding gzip is not supported/)
-})
-
-test('getContentStream: disableInflate with identity returns req', () => {
-	const req = mockReq(undefined, {})
-	strictEqual(getContentStream(req, 'identity', true), req)
 })
 
 // ---- readStream ----------------------------------------------------------

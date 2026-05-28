@@ -1,7 +1,7 @@
 // https://github.com/expressjs/body-parser/blob/2a2f47199b443c56b6ebb74cac7acdeb63fac61f/lib/read.js#L152
 import type {IncomingMessage} from 'node:http'
 import type {Readable} from 'node:stream'
-import {createBrotliDecompress, createGunzip, createInflate} from 'node:zlib'
+import {createBrotliDecompress, createGunzip, createInflate, createZstdDecompress} from 'node:zlib'
 
 // body errors carry an HTTP status so error middleware can map them (413 too large, 400 malformed)
 function bodyError(message: string, statusCode: number) {
@@ -12,9 +12,7 @@ function bodyError(message: string, statusCode: number) {
 
 // note: there might be multiple encodings applied to the stream
 // we only support one encoding
-export function getContentStream(req: IncomingMessage, encoding: string, disableInflate?: boolean) {
-	if (disableInflate && encoding !== 'identity') throw new Error(`content-encoding ${encoding} is not supported`)
-
+export function getContentStream(req: IncomingMessage, encoding: string) {
 	switch (encoding) {
 		case 'deflate': {
 			const stream = createInflate()
@@ -28,6 +26,11 @@ export function getContentStream(req: IncomingMessage, encoding: string, disable
 		}
 		case 'br': {
 			const stream = createBrotliDecompress()
+			req.pipe(stream)
+			return stream
+		}
+		case 'zstd': {
+			const stream = createZstdDecompress()
 			req.pipe(stream)
 			return stream
 		}

@@ -11,25 +11,12 @@ export default function makeLogger(log = logJson) {
 		const res = getRes()
 		const req = getReq()
 		const logId = requestCount++
-
 		const start = hrtime.bigint()
-		const now = new Date(Date.now() + 9 * 60 * 60 * 1000) // jst
 
 		log({
 			level: 'info',
 			id: logId,
-			timestamp: [
-				[
-					now.getUTCFullYear(),
-					String(now.getUTCMonth() + 1).padStart(2, '0'),
-					String(now.getUTCDate()).padStart(2, '0'),
-				].join('-'),
-				[
-					String(now.getUTCHours()).padStart(2, '0'),
-					String(now.getUTCMinutes()).padStart(2, '0'),
-					[String(now.getUTCSeconds()).padStart(2, '0'), String(now.getUTCMilliseconds()).padStart(3, '0')].join('.'),
-				].join(':'),
-			].join('T'),
+			timestamp: new Date().toISOString(),
 			remoteAddress: req.socket.remoteAddress,
 			method: req.method,
 			url: req.url,

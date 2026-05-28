@@ -419,16 +419,18 @@ Options:
 
 #### Response Setters
 
-Each setter's options are inlined to expose only what its response type honors. To set arbitrary
-response headers, use `getRes().setHeader(name, value)` before (or after) a setter.
+Each setter's options are inlined to expose only what its response type honors. `text/*` responses
+are labelled `charset=utf-8` automatically; to use any other charset (or set one on a non-text type),
+set the header yourself with `getRes().setHeader('content-type', ...)`. `setFile` is the exception —
+it takes `charset` via `SendFileOptions`. Use `getRes().setHeader(name, value)` for arbitrary headers.
 
 - **`setJson(data, {status?, disableEtag?})`** - JSON response (`application/json`; always UTF-8 per RFC 8259)
-- **`setHtml(html, {status?, charset?, disableEtag?})`** - HTML (`text/html; charset=utf-8`)
-- **`setText(text, {status?, charset?, disableEtag?})`** - plain text (`text/plain; charset=utf-8`)
-- **`setBuffer(buffer, {status?, charset?, disableEtag?})`** - buffer (`application/octet-stream`)
+- **`setHtml(html, {status?, disableEtag?})`** - HTML (`text/html; charset=utf-8`)
+- **`setText(text, {status?, disableEtag?})`** - plain text (`text/plain; charset=utf-8`)
+- **`setBuffer(buffer, {status?, disableEtag?})`** - buffer (`application/octet-stream`)
 - **`setFile(path, {status?, ...SendFileOptions})`** - file (charset/ETag via `SendFileOptions`)
-- **`setNodeStream(stream, {status?, charset?})`** - Node.js stream
-- **`setWebStream(stream, {status?, charset?})`** - Web stream
+- **`setNodeStream(stream, {status?})`** - Node.js stream
+- **`setWebStream(stream, {status?})`** - Web stream
 - **`setRedirect(url, status)`** - redirect; `status` is `301 | 302` (required, positional)
 - **`setEmpty({status?, disableEtag?})`** - empty response
 

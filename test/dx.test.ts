@@ -201,35 +201,6 @@ test('no setter called: 404', async () => {
 	strictEqual(res.status, 404)
 })
 
-test('common option charset: drives the body encoding and the content-type label', async () => {
-	// 'café' encoded as latin1 is 4 bytes (é -> 0xe9); utf-8 would be 5 bytes
-	const res = await call(() => setText('café', {charset: 'latin1'}))
-	strictEqual(res.headers['content-type'], 'text/plain; charset=latin1')
-	deepEqual([...res.body], [0x63, 0x61, 0x66, 0xe9])
-})
-
-test('charset labels the Content-Type on setBuffer and the stream setters', async () => {
-	strictEqual(
-		(await call(() => setBuffer(Buffer.from('x'), {charset: 'utf-8'}))).headers['content-type'],
-		'application/octet-stream; charset=utf-8',
-	)
-	strictEqual(
-		(await call(() => setNodeStream(Readable.from(['x']), {charset: 'utf-8'}))).headers['content-type'],
-		'application/octet-stream; charset=utf-8',
-	)
-	const web = () =>
-		setWebStream(
-			new ReadableStream({
-				start(c) {
-					c.enqueue(new Uint8Array([120]))
-					c.close()
-				},
-			}),
-			{charset: 'utf-8'},
-		)
-	strictEqual((await call(web)).headers['content-type'], 'application/octet-stream; charset=utf-8')
-})
-
 test('status applies on setHtml and setFile', async () => {
 	strictEqual((await call(() => setHtml('<b>x</b>', {status: 201}))).status, 201)
 	const dir = mkdtempSync(join(tmpdir(), 'dx-server-test-'))

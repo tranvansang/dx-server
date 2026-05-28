@@ -65,7 +65,6 @@ export function dxServer(
 	req: IncomingMessage,
 	res: ServerResponse,
 	options: {
-		charset?: BufferEncoding
 		jsonBeautify?: boolean // json only
 		disableEtag?: boolean
 	} = {},
@@ -89,40 +88,29 @@ export function getRes() {
 	return requestStorage.getStore()!.res
 }
 
-// Each setter inlines only the options its response type honors:
-//   - charset: text/html (body encoding + Content-Type label) and buffer/streams (Content-Type
-//     label). not on setJson (always UTF-8, RFC 8259), setEmpty, setRedirect; setFile takes it via
-//     SendFileOptions instead (its Content-Type is owned by sendFileTrusted).
-//   - disableEtag: the buffer-backed types (text/html/buffer/json/empty). not on streams or redirect
-//     (never ETagged) or setFile (use SendFileOptions.etag: 'disabled').
+// Each setter inlines only the options its response type honors. There is no charset option: text/*
+// responses are labelled charset=utf-8 automatically, and any other charset must be set manually via
+// res.setHeader('content-type', ...). The exception is setFile, which takes charset via
+// SendFileOptions (its Content-Type is derived from the file extension by sendFileTrusted).
+// disableEtag is honored only by the buffer-backed types (text/html/buffer/json/empty); streams and
+// redirects are never ETagged, and setFile controls its ETag via SendFileOptions.etag.
 
-export function setText(
-	text: string,
-	{status, charset, disableEtag}: {status?: number; charset?: BufferEncoding; disableEtag?: boolean} = {},
-) {
+export function setText(text: string, {status, disableEtag}: {status?: number; disableEtag?: boolean} = {}) {
 	const dx = dxContext.value
 	if (status) getRes().statusCode = status
-	if (charset !== undefined) dx.charset = charset
 	if (disableEtag !== undefined) dx.disableEtag = disableEtag
 	dx.data = text
 	dx.type = 'text'
 }
 
-export function setHtml(
-	html: string,
-	options: {status?: number; charset?: BufferEncoding; disableEtag?: boolean} = {},
-) {
+export function setHtml(html: string, options: {status?: number; disableEtag?: boolean} = {}) {
 	setText(html, options)
 	dxContext.value.type = 'html'
 }
 
-export function setBuffer(
-	buffer: Buffer,
-	{status, charset, disableEtag}: {status?: number; charset?: BufferEncoding; disableEtag?: boolean} = {},
-) {
+export function setBuffer(buffer: Buffer, {status, disableEtag}: {status?: number; disableEtag?: boolean} = {}) {
 	const dx = dxContext.value
 	if (status) getRes().statusCode = status
-	if (charset !== undefined) dx.charset = charset
 	if (disableEtag !== undefined) dx.disableEtag = disableEtag
 	dx.data = buffer
 	dx.type = 'buffer'
@@ -144,18 +132,16 @@ export function setEmpty({status, disableEtag}: {status?: number; disableEtag?: 
 	dx.type = 'empty'
 }
 
-export function setNodeStream(stream: Readable, {status, charset}: {status?: number; charset?: BufferEncoding} = {}) {
+export function setNodeStream(stream: Readable, {status}: {status?: number} = {}) {
 	const dx = dxContext.value
 	if (status) getRes().statusCode = status
-	if (charset !== undefined) dx.charset = charset
 	dx.data = stream
 	dx.type = 'nodeStream'
 }
 
-export function setWebStream(stream: ReadableStream, {status, charset}: {status?: number; charset?: BufferEncoding} = {}) {
+export function setWebStream(stream: ReadableStream, {status}: {status?: number} = {}) {
 	const dx = dxContext.value
 	if (status) getRes().statusCode = status
-	if (charset !== undefined) dx.charset = charset
 	dx.data = stream
 	dx.type = 'webStream'
 }

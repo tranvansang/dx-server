@@ -7,7 +7,6 @@ import {entityTag, isFreshETag} from './vendors/etag.js'
 import {sendFileTrusted, type SendFileOptions, type HttpError} from './staticHelpers.js'
 
 export type DxContext = {
-	charset?: BufferEncoding
 	jsonBeautify?: boolean // json only
 	disableEtag?: boolean
 } & (
@@ -61,7 +60,7 @@ export type DxContext = {
 export async function writeRes(
 	req: IncomingMessage,
 	res: ServerResponse,
-	{type, data, charset, jsonBeautify, disableEtag, options}: DxContext,
+	{type, data, jsonBeautify, disableEtag, options}: DxContext,
 ) {
 	if (res.headersSent) return
 
@@ -71,16 +70,14 @@ export async function writeRes(
 		case 'text':
 		case 'html':
 			setContentType(type === 'html' ? 'text/html' : 'text/plain')
-			buffer = Buffer.from(data ?? '', charset)
+			buffer = Buffer.from(data ?? '')
 			break
 		case 'buffer':
 			setContentType('application/octet-stream')
 			buffer = data ?? Buffer.from('')
 			break
 		case 'json':
-			// JSON is always UTF-8 (RFC 8259) and application/json defines no charset parameter, so the
-			// charset option is intentionally ignored: no charset label and the body is UTF-8 encoded.
-			setContentType('application/json', false)
+			setContentType('application/json')
 			buffer =
 				data === undefined
 					? Buffer.from('')
@@ -164,12 +161,11 @@ export async function writeRes(
 
 	await awaitResFinished(res)
 
-	function setContentType(contentType: string, withCharset = true) {
+	function setContentType(contentType: string) {
 		if (res.headersSent || res.getHeader('content-type')) return
-		// text/* defaults to utf-8; an explicit charset option applies to any type. withCharset is
-		// false for JSON, which is always UTF-8 with no charset parameter (RFC 8259).
-		const cs = withCharset ? (charset ?? (contentType.startsWith('text/') ? 'utf-8' : undefined)) : undefined
-		res.setHeader('content-type', `${contentType}${cs ? `; charset=${cs}` : ''}`)
+		// text/* defaults to utf-8; other types (json, octet-stream) carry no charset. To use a
+		// different charset, set the content-type header yourself via res.setHeader().
+		res.setHeader('content-type', contentType.startsWith('text/') ? `${contentType}; charset=utf-8` : contentType)
 	}
 }
 

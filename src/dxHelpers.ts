@@ -113,7 +113,6 @@ export async function writeRes(
 					res.statusCode = (e as Partial<HttpError>)?.statusCode ?? 500
 					await promisify(res.end.bind(res))()
 				} else if (!res.writableEnded) res.destroy(e as Error)
-				console.error(e)
 			}
 			await awaitResFinished(res)
 			return

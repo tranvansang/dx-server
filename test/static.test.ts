@@ -49,6 +49,32 @@ test('content-type by extension', async () => {
 	}
 })
 
+test('charset option overrides the Content-Type charset', async () => {
+	const dir = mkdtempSync(join(tmpdir(), 'dx-static-'))
+	try {
+		writeFileSync(join(dir, 'page.html'), '<h1>x</h1>')
+		writeFileSync(join(dir, 'noext'), 'binary')
+
+		// default: text/* carries charset=utf-8
+		strictEqual(
+			(await fetchStatic({root: dir}, {path: '/page.html'})).headers['content-type'],
+			'text/html; charset=utf-8',
+		)
+		// explicit charset replaces the default utf-8
+		strictEqual(
+			(await fetchStatic({root: dir, charset: 'latin1'}, {path: '/page.html'})).headers['content-type'],
+			'text/html; charset=latin1',
+		)
+		// charset is appended even to a type that normally has none
+		strictEqual(
+			(await fetchStatic({root: dir, charset: 'utf-8'}, {path: '/noext'})).headers['content-type'],
+			'application/octet-stream; charset=utf-8',
+		)
+	} finally {
+		rmSync(dir, {recursive: true, force: true})
+	}
+})
+
 test('etag modes', async () => {
 	const dir = mkdtempSync(join(tmpdir(), 'dx-static-'))
 	try {

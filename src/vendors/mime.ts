@@ -24,14 +24,12 @@ function preferredType(ext: string, type0?: string, type1?: string) {
 	return score0 > score1 ? type0 : type1
 }
 
-export function contentTypeForExtension(extension: string) {
-	const mimeType = extensionToMime[extension.toLowerCase()]
-	if (!mimeType) return
-	if (!mimeType.includes('charset')) {
-		const charset = determineCharset(mimeType)
-		if (charset) return mimeType + '; charset=' + charset.toLowerCase()
-	}
-	return mimeType
+export function contentTypeForExtension(extension: string, charset?: string) {
+	// unknown extension: octet-stream is binary, so add a charset only when one is explicitly given
+	const mimeType = extensionToMime[extension.toLowerCase()] ?? 'application/octet-stream'
+	// known text/* (and mime-db charset types) default to their charset; an explicit charset overrides it
+	charset ??= determineCharset(mimeType)
+	return `${mimeType}${charset ? '; charset=' + charset.toLowerCase() : ''}`
 }
 
 const extractTypeRegexp = /^\s*([^;\s]*)(?:;|\s|$)/

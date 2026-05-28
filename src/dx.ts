@@ -65,7 +65,7 @@ export function dxServer(
 	req: IncomingMessage,
 	res: ServerResponse,
 	options: {
-		charset?: BufferEncoding // not for redirect
+		charset?: BufferEncoding
 		jsonBeautify?: boolean // json only
 		disableEtag?: boolean
 	} = {},
@@ -89,72 +89,75 @@ export function getRes() {
 	return requestStorage.getStore()!.res
 }
 
-export function setText(text: string, {status}: {status?: number} = {}) {
-	const res = getRes()
+// options common to every setter. charset and disableEtag are written onto the dx context and
+// consumed by writeRes; note charset/disableEtag only affect buffer-backed responses
+// (text/html/json/buffer/empty) — streams, files and redirects bypass that code path in writeRes.
+export interface ResponseOptions {
+	status?: number
+	charset?: BufferEncoding
+	disableEtag?: boolean
+}
+
+function applyResponseOptions({status, charset, disableEtag}: ResponseOptions = {}) {
 	const dx = dxContext.value
-	if (status) res.statusCode = status
+	if (status) getRes().statusCode = status
+	if (charset !== undefined) dx.charset = charset
+	if (disableEtag !== undefined) dx.disableEtag = disableEtag
+	return dx
+}
+
+export function setText(text: string, options: ResponseOptions = {}) {
+	const dx = applyResponseOptions(options)
 	dx.data = text
 	dx.type = 'text'
 }
 
-export function setEmpty({status}: {status?: number} = {}) {
-	const res = getRes()
-	const dx = dxContext.value
-	if (status) res.statusCode = status
+export function setEmpty(options: ResponseOptions = {}) {
+	const dx = applyResponseOptions(options)
 	dx.data = undefined
 	dx.type = 'empty'
 }
 
-export function setHtml(html: string, opts: {status?: number} = {}) {
-	setText(html, opts)
-	const dx = dxContext.value
-	dx.type = 'html'
+export function setHtml(html: string, options: ResponseOptions = {}) {
+	setText(html, options)
+	dxContext.value.type = 'html'
 }
 
-export function setFile(filePath: string, options?: SendFileOptions) {
-	const dx = dxContext.value
+export function setFile(filePath: string, {status, disableEtag, ...options}: SendFileOptions & ResponseOptions = {}) {
+	// charset stays in `options` (SendFileOptions): for files the Content-Type is owned by
+	// sendFileTrusted, so charset must reach it there rather than the (inert-for-files) dx.charset.
+	const dx = applyResponseOptions({status, disableEtag})
 	dx.data = filePath
 	dx.type = 'file'
 	dx.options = options
 }
 
-export function setBuffer(buffer: Buffer, {status}: {status?: number} = {}) {
-	const res = getRes()
-	const dx = dxContext.value
-	if (status) res.statusCode = status
+export function setBuffer(buffer: Buffer, options: ResponseOptions = {}) {
+	const dx = applyResponseOptions(options)
 	dx.data = buffer
 	dx.type = 'buffer'
 }
 
-export function setNodeStream(stream: Readable, {status}: {status?: number} = {}) {
-	const res = getRes()
-	const dx = dxContext.value
-	if (status) res.statusCode = status
+export function setNodeStream(stream: Readable, options: ResponseOptions = {}) {
+	const dx = applyResponseOptions(options)
 	dx.data = stream
 	dx.type = 'nodeStream'
 }
 
-export function setWebStream(stream: ReadableStream, {status}: {status?: number} = {}) {
-	const res = getRes()
-	const dx = dxContext.value
-	if (status) res.statusCode = status
+export function setWebStream(stream: ReadableStream, options: ResponseOptions = {}) {
+	const dx = applyResponseOptions(options)
 	dx.data = stream
 	dx.type = 'webStream'
 }
 
-export function setJson(json: any, {status}: {status?: number} = {}) {
-	const res = getRes()
-	if (status) res.statusCode = status
-
-	const dx = dxContext.value
+export function setJson(json: any, options: ResponseOptions = {}) {
+	const dx = applyResponseOptions(options)
 	dx.data = json
 	dx.type = 'json'
 }
 
-export function setRedirect(url: string, status: 301 | 302) {
-	const res = getRes()
-	const dx = dxContext.value
-	res.statusCode = status
+export function setRedirect(url: string, status: 301 | 302, options: Omit<ResponseOptions, 'status'> = {}) {
+	const dx = applyResponseOptions({...options, status})
 	dx.data = url
 	dx.type = 'redirect'
 }

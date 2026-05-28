@@ -7,7 +7,7 @@ import {entityTag, isFreshETag} from './vendors/etag.js'
 import {sendFileTrusted, type SendFileOptions, type HttpError} from './staticHelpers.js'
 
 export type DxContext = {
-	charset?: BufferEncoding // not for redirect
+	charset?: BufferEncoding
 	jsonBeautify?: boolean // json only
 	disableEtag?: boolean
 } & (

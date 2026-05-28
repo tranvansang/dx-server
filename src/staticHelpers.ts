@@ -33,6 +33,11 @@ export interface SendFileOptions {
 	maxAge?: number // in milliseconds
 	immutable?: boolean
 
+	// override the charset of the resolved Content-Type. by default the type comes from the file
+	// extension via contentTypeForExtension, which appends charset=utf-8 to text/* types (and to any
+	// type with a charset in mime-db); set this to force a different charset.
+	charset?: BufferEncoding
+
 	// when root is set, set true to 403 any file whose real path resolves outside root
 	// (symlink containment). default: symlinks are followed.
 	disableFollowSymlinks?: boolean
@@ -57,6 +62,7 @@ export async function sendFileTrusted(
 		maxAge = 60 * 60 * 24 * 365 * 1000, // 1 year
 		immutable,
 		disableFollowSymlinks,
+		charset,
 	}: SendFileOptions = {},
 ) {
 	// null byte(s)
@@ -141,10 +147,7 @@ export async function sendFileTrusted(
 
 		// content-type
 		if (!res.getHeader('Content-Type'))
-			res.setHeader(
-				'Content-Type',
-				contentTypeForExtension(path.extname(pathname).slice(1)) || 'application/octet-stream',
-			)
+			res.setHeader('Content-Type', contentTypeForExtension(path.extname(pathname).slice(1), charset))
 
 		// conditional GET support
 		// isConditionalGET

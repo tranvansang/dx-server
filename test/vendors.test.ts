@@ -319,8 +319,8 @@ test('contentTypeForExtension: binary extension has no charset', () => {
 	strictEqual(contentTypeForExtension('png'), 'image/png')
 })
 
-test('contentTypeForExtension: unknown extension returns undefined', () => {
-	strictEqual(contentTypeForExtension('zzz'), undefined)
+test('contentTypeForExtension: unknown extension falls back to octet-stream (no charset)', () => {
+	strictEqual(contentTypeForExtension('zzz'), 'application/octet-stream')
 })
 
 test('contentTypeForExtension: uppercase extension is lowercased', () => {
@@ -331,6 +331,16 @@ test('contentTypeForExtension: text/* without explicit charset defaults to UTF-8
 	// text/jade has no charset entry in mimeDb -> default text/* branch
 	const result = contentTypeForExtension('jade')
 	ok(result?.includes('charset=utf-8'))
+})
+
+test('contentTypeForExtension: explicit charset overrides the type default', () => {
+	// known text type: explicit charset replaces the utf-8 default and is lowercased
+	strictEqual(contentTypeForExtension('html', 'LATIN1'), 'text/html; charset=latin1')
+	// binary type: gains a charset only when one is explicitly passed
+	strictEqual(contentTypeForExtension('png'), 'image/png')
+	strictEqual(contentTypeForExtension('png', 'utf-8'), 'image/png; charset=utf-8')
+	// unknown extension: octet-stream, charset only when explicit
+	strictEqual(contentTypeForExtension('zzz', 'utf-8'), 'application/octet-stream; charset=utf-8')
 })
 
 // ---------------------------------------------------------------------------

@@ -200,6 +200,28 @@ test('no setter called: 404', async () => {
 	strictEqual(res.status, 404)
 })
 
+test('common option charset: drives the body encoding and the content-type label', async () => {
+	// 'café' encoded as latin1 is 4 bytes (é -> 0xe9); utf-8 would be 5 bytes
+	const res = await call(() => setText('café', {charset: 'latin1'}))
+	strictEqual(res.headers['content-type'], 'text/plain; charset=latin1')
+	deepEqual([...res.body], [0x63, 0x61, 0x66, 0xe9])
+})
+
+test('common option disableEtag: suppresses the ETag per setter', async () => {
+	strictEqual((await call(() => setText('hi', {disableEtag: true}))).headers.etag, undefined)
+	strictEqual((await call(() => setJson({a: 1}, {disableEtag: true}))).headers.etag, undefined)
+	strictEqual((await call(() => setBuffer(Buffer.from('x'), {disableEtag: true}))).headers.etag, undefined)
+	// without the option an ETag is still emitted
+	ok((await call(() => setText('hi'))).headers.etag, 'expected an ETag when disableEtag is not set')
+})
+
+test('common options coexist with status', async () => {
+	const res = await call(() => setJson({ok: 1}, {status: 201, disableEtag: true}))
+	strictEqual(res.status, 201)
+	strictEqual(res.headers.etag, undefined)
+	deepEqual(JSON.parse(res.body.toString()), {ok: 1})
+})
+
 test('ETag / 304: if-none-match returns 304 with empty body', async () => {
 	const first = await call(() => setText('cacheable'))
 	const etag = first.headers.etag

@@ -5,6 +5,13 @@ A modern, unopinionated, and performant Node.js server framework built on AsyncL
 [![npm version](https://img.shields.io/npm/v/dx-server.svg)](https://www.npmjs.com/package/dx-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## Important caveats
+
+- **ETag is supported.** Static file serving defaults to a weak (mtime/size-based) ETag, while other responses (`setJson`, `setHtml`, `setText`, `setBuffer`, …) use a strong (content-based) ETag. Redirects get no ETag.
+- **Request compression is supported.** Request bodies with `Content-Encoding: gzip`, `deflate`, or `br` are decompressed automatically.
+- **Response compression is NOT supported.** dx-server never sets `Content-Encoding` on responses — handle response compression at the reverse proxy / CDN level.
+- **Static file serving supports Range requests.**
+
 ## Features
 
 - 🎯 **Elegant API interface** - No need to pass req/res objects through middleware chains

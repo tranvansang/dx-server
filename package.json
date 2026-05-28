@@ -19,7 +19,9 @@
 	},
 	"type": "module",
 	"scripts": {
-		"prepublishOnly": "tsc"
+		"prepublishOnly": "tsc",
+		"test": "tsc && node --test test/*.test.ts",
+		"coverage": "tsc && node --test --test-coverage-include='lib/**' --test-coverage-exclude='lib/vendors/mimeDb.js' --test-coverage-exclude='test/**' test/*.test.ts"
 	},
 	"license": "MIT",
 	"devDependencies": {

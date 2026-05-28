@@ -94,6 +94,24 @@ test('setEmpty with status 204', async () => {
 	strictEqual(res.body.length, 0)
 })
 
+test('204 strips the body and content-length/content-type even when a setter produced them', async () => {
+	// setText would normally write 'hello' with a content-type + content-length; a 204 must drop all of it
+	const res = await call(() => setText('hello', {status: 204}))
+	strictEqual(res.status, 204)
+	strictEqual(res.body.length, 0)
+	strictEqual(res.headers['content-length'], undefined)
+	strictEqual(res.headers['content-type'], undefined)
+	strictEqual(res.headers['etag'], undefined)
+})
+
+test('explicit 304 carries no body and no content-length', async () => {
+	const res = await call(() => setJson({a: 1}, {status: 304}))
+	strictEqual(res.status, 304)
+	strictEqual(res.body.length, 0)
+	strictEqual(res.headers['content-length'], undefined)
+	strictEqual(res.headers['content-type'], undefined)
+})
+
 test('setRedirect 302: location set, no ETag', async () => {
 	// Location must be header-safe: Node rejects non-ASCII chars in header values, so a
 	// path like '/там' is sent percent-encoded (encodeURI), matching real redirect usage.
@@ -170,6 +188,10 @@ test('ETag / 304: if-none-match returns 304 with empty body', async () => {
 	const second = await call(() => setText('cacheable'), {headers: {'if-none-match': etag}})
 	strictEqual(second.status, 304)
 	strictEqual(second.body.length, 0)
+	// the freshETag -> 304 transition keeps the ETag (it's a validator) but drops the body framing
+	strictEqual(second.headers.etag, etag)
+	strictEqual(second.headers['content-length'], undefined)
+	strictEqual(second.headers['content-type'], undefined)
 })
 
 test('disableEtag: no ETag header', async () => {

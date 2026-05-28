@@ -64,7 +64,10 @@ function forceGetCharset(req: IncomingMessage, expected: string) {
 	if (!parameters) return
 	// assert charset per RFC 7159 sec 8.1
 	const charset = (parameters.charset?.toLowerCase() as BufferEncoding) || 'utf-8'
-	if (!charset.startsWith('utf-')) throw new Error(`unsupported charset "${charset.toUpperCase()}"`)
+	// positive allowlist: utf-7 etc. would pass a `startsWith('utf-')` check but is not a valid
+	// Buffer encoding (and utf-7 is an XSS smuggling vector)
+	if (!['utf-8', 'utf8', 'utf-16le', 'utf16le'].includes(charset))
+		throw new Error(`unsupported charset "${charset.toUpperCase()}"`)
 
 	return charset
 }

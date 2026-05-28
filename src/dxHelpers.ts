@@ -160,7 +160,6 @@ export async function writeRes(
 		await promisify(res.end.bind(res))()
 	}
 	// we do not support content-encoding (gzip, deflate, br) and leave it to reverse proxy or CDN
-
 	await promisify(res.end.bind(res))()
 
 	await awaitResFinished(res)

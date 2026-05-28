@@ -132,33 +132,28 @@ export async function writeRes(
 			return
 	}
 
-	// https://github.com/expressjs/express/blob/980d881e3b023db079de60477a2588a91f046ca5/lib/response.js#L210
-	// if (res.statusCode === 204) { // No Content
-	// 	res.removeHeader('content-type')
-	// 	res.removeHeader('content-length')
-	// 	res.removeHeader('transfer-encoding')
-	// 	// write nothing
-	// }
-	// if (res.statusCode === 205) { // reset content. Tell client to clear the form, etc.
-	// 	res.setHeader('content-length', 0)
-	// 	res.removeHeader('transfer-encoding')
-	// } else
-	if (req.method !== 'HEAD') {
+	// 204 No Content and 304 Not Modified must not carry a body or Content-Length.
+	if (res.statusCode !== 204 && res.statusCode !== 304) {
+		// Content-Length and ETag mirror what a GET would send, so a HEAD reports them too.
 		res.setHeader('content-length', buffer.length)
 		// no ETag for redirects: the empty body would share the empty-body tag with other empty
 		// responses, so a cached If-None-Match could wrongly 304 a redirect (dropping Location)
 		if (!disableEtag && type !== 'redirect') {
 			const etag = entityTag(buffer)
 			res.setHeader('ETag', etag)
-			if (isFreshETag(req, etag)) {
-				res.removeHeader('content-type')
-				res.removeHeader('content-length')
-				res.removeHeader('transfer-encoding')
-				res.statusCode = 304
-			} else res.write(buffer)
-		} else res.write(buffer)
-		await promisify(res.end.bind(res))()
+			if (isFreshETag(req, etag)) res.statusCode = 304
+		}
 	}
+
+	// 204/304 carry no body or representation/framing metadata (ETag is a validator, so it stays).
+	// This catches both an explicitly-set 204/304 and the freshETag -> 304 transition above.
+	if (res.statusCode === 204 || res.statusCode === 304) {
+		// https://github.com/expressjs/express/blob/980d881e3b023db079de60477a2588a91f046ca5/lib/response.js#L210
+		res.removeHeader('content-type')
+		res.removeHeader('content-length')
+		res.removeHeader('transfer-encoding')
+	} else if (req.method !== 'HEAD') res.write(buffer)
+
 	// we do not support content-encoding (gzip, deflate, br) and leave it to reverse proxy or CDN
 	await promisify(res.end.bind(res))()
 

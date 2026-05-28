@@ -2,6 +2,7 @@
 import {createHash} from 'node:crypto'
 import type {IncomingMessage} from 'node:http'
 import {createReadStream, type Stats} from 'node:fs'
+import {pipeline} from 'node:stream/promises'
 
 export function entityTag(buf: Buffer) {
 	// content hash is a strong validator: same bytes -> same tag. never weak (W/).
@@ -15,9 +16,7 @@ export function entityTag(buf: Buffer) {
 
 export async function entityTagPath(fileStat: Stats, filePath: string) {
 	const hash = createHash('sha1')
-	const defer = Promise.withResolvers<Buffer>()
-	createReadStream(filePath).pipe(hash).on('finish', defer.resolve).on('error', defer.reject)
-	await defer.promise
+	await pipeline(createReadStream(filePath), hash)
 	return `"${fileStat.size.toString(16)}-${hash.digest('base64').substring(0, 27)}"`
 	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag#directives
 	// weak W/ vs strong eTag

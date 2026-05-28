@@ -49,7 +49,7 @@ export async function sendFileTrusted(
 		end,
 		disableAcceptRanges,
 		disableLastModified,
-		etag = 'strong',
+		etag = 'weak',
 		disableCacheControl,
 		maxAge = 60 * 60 * 24 * 365 * 1000, // 1 year
 		immutable,
@@ -116,7 +116,7 @@ export async function sendFileTrusted(
 		res.setHeader('Last-Modified', fileStat.mtime.toUTCString())
 
 	if (etag !== 'disabled' && !res.getHeader('ETag'))
-		res.setHeader('ETag', etag === 'weak' ? statTag(fileStat) : await entityTagPath(fileStat, pathname, false))
+		res.setHeader('ETag', etag === 'weak' ? statTag(fileStat) : await entityTagPath(fileStat, pathname))
 	//endregion set header fields
 
 	// content-type

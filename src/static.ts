@@ -22,10 +22,11 @@ export function chainStatic(
 		const matched = urlPattern.exec({pathname})
 		if (!matched) return next()
 
+		const res = getRes()
 		try {
-			await sendFileTrusted(req, getRes(), getPathname?.(matched) ?? decodeURIComponent(pathname), options)
+			await sendFileTrusted(req, res, getPathname?.(matched) ?? decodeURIComponent(pathname), options)
 		} catch (e) {
-			return next(e) // if request's pathname matches pattern, but file is not found, next() will be called with error
+			if (!res.headersSent) return next(e) // pre-stream error: user error middleware can still respond
 		}
 	}
 }

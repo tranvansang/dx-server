@@ -440,6 +440,7 @@ Options:
 #### Middleware Utilities
 
 - **`chainStatic(pattern, options)`** - Serve static files
+
   ```javascript
   chainStatic('/public/*', {
   	root: '/path/to/files',
@@ -455,6 +456,7 @@ Options:
   ```
 
 - **`logger(log?, options?)`** - Request logging middleware
+
   ```javascript
   import {logger, logJson} from 'dx-server'
 

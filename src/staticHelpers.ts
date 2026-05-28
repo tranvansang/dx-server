@@ -117,8 +117,7 @@ export async function sendFileTrusted(
 		if (root && disableFollowSymlinks) {
 			const [realFile, realRoot] = await Promise.all([realpath(pathname), realpath(root)])
 			const rel = path.relative(realRoot, realFile)
-			if (rel.startsWith('..') || path.isAbsolute(rel))
-				throw httpError('Forbidden: symlink escapes root', 403)
+			if (rel.startsWith('..') || path.isAbsolute(rel)) throw httpError('Forbidden: symlink escapes root', 403)
 		}
 
 		if (res.headersSent) return
@@ -163,9 +162,7 @@ export async function sendFileTrusted(
 				if (
 					!etag ||
 					(match !== '*' &&
-						parseTokenList(match).every(
-							match => match !== etag && match !== 'W/' + etag && 'W/' + match !== etag,
-						))
+						parseTokenList(match).every(match => match !== etag && match !== 'W/' + etag && 'W/' + match !== etag))
 				)
 					throw httpError('Precondition Failed: request headers do not match the response', 412)
 			}

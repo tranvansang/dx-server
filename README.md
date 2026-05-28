@@ -447,10 +447,22 @@ Options:
   		return matched.pathname
   	}, // take URLPattern matched object, epects to return the file path
   	// the returned file path must be run through decodeURIComponent before returning
-  	dotfiles: 'deny',
-  	disableEtag: false,
-  	lastModified: true,
+  	allowDotfiles: false, // default: dotfiles are denied
+  	etag: 'weak', // 'weak' (default) | 'strong' | 'disabled'
+  	disableLastModified: false,
+  	disableFollowSymlinks: false, // set true to 403 files whose real path escapes root
   })
+  ```
+
+- **`logger(log?, options?)`** - Request logging middleware
+  ```javascript
+  import {logger, logJson} from 'dx-server'
+
+  // logs one line on request and one on response completion
+  chain(logger()) // defaults: log = logJson (JSON to stdout), timestamps in UTC
+
+  // custom sink and timezone offset (in hours) for the human-readable timestamp
+  chain(logger(logJson, {timezoneOffset: 9})) // +09:00 (JST)
   ```
 
 ### Routing

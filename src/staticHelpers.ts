@@ -1,6 +1,6 @@
 import {IncomingMessage, ServerResponse} from 'node:http'
 import path from 'node:path'
-import {open} from 'node:fs/promises'
+import {open, realpath} from 'node:fs/promises'
 import {entityTagPath, statTag} from './vendors/etag.js'
 import {contentTypeForExtension} from './vendors/mime.js'
 import {fresh, parseHttpDate, parseTokenList} from './vendors/fresh.js'
@@ -33,6 +33,10 @@ export interface SendFileOptions {
 	maxAge?: number // in milliseconds
 	immutable?: boolean
 
+	// when root is set, set true to 403 any file whose real path resolves outside root
+	// (symlink containment). default: symlinks are followed.
+	disableFollowSymlinks?: boolean
+
 	end?: number
 	start?: number
 }
@@ -52,6 +56,7 @@ export async function sendFileTrusted(
 		disableCacheControl,
 		maxAge = 60 * 60 * 24 * 365 * 1000, // 1 year
 		immutable,
+		disableFollowSymlinks,
 	}: SendFileOptions = {},
 ) {
 	// null byte(s)
@@ -107,6 +112,14 @@ export async function sendFileTrusted(
 		const fileStat = await handle.stat()
 
 		if (fileStat.isDirectory()) throw httpError('Forbidden: directory access is not allowed', 403)
+
+		// symlink containment: ensure the real target stays inside root (opt-in)
+		if (root && disableFollowSymlinks) {
+			const [realFile, realRoot] = await Promise.all([realpath(pathname), realpath(root)])
+			const rel = path.relative(realRoot, realFile)
+			if (rel.startsWith('..') || path.isAbsolute(rel))
+				throw httpError('Forbidden: symlink escapes root', 403)
+		}
 
 		if (res.headersSent) return
 
@@ -250,10 +263,11 @@ function isRangeFresh(req: IncomingMessage, res: ServerResponse) {
 
 	if (!ifRange) return true
 
-	// if-range as etag
+	// if-range as etag (exact match: If-Range carries a single validator, not a list — a substring
+	// test would let If-Range: "ab" match an ETag of "abc")
 	if (ifRange.indexOf('"') !== -1) {
 		const etag = res.getHeader('ETag')
-		return etag && ifRange.includes(etag as any)
+		return etag !== undefined && ifRange === etag
 	}
 
 	// if-range as modified date

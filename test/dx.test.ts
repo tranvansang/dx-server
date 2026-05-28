@@ -175,6 +175,26 @@ test('setFile: serves the file bytes', async () => {
 	}
 })
 
+test('setFile: Content-Type comes from the file extension, not octet-stream', async () => {
+	// regression: writeRes must NOT pre-set octet-stream for the 'file' type, or sendFileTrusted's
+	// extension-based detection is suppressed and an .html file is served as octet-stream
+	const dir = mkdtempSync(join(tmpdir(), 'dx-server-test-'))
+	try {
+		const html = join(dir, 'index.html')
+		writeFileSync(html, '<h1>hi</h1>')
+		const htmlRes = await call(() => setFile(html))
+		match(htmlRes.headers['content-type'], /^text\/html/)
+
+		// a no-extension file still falls back to octet-stream (sendFileTrusted's own default)
+		const bin = join(dir, 'blob')
+		writeFileSync(bin, 'data')
+		const binRes = await call(() => setFile(bin))
+		strictEqual(binRes.headers['content-type'], 'application/octet-stream')
+	} finally {
+		rmSync(dir, {recursive: true, force: true})
+	}
+})
+
 test('no setter called: 404', async () => {
 	const res = await call(() => {})
 	strictEqual(res.status, 404)

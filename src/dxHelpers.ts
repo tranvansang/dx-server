@@ -98,7 +98,10 @@ export async function writeRes(
 				break
 			}
 		case 'file':
-			setContentType('application/octet-stream')
+			// streams have no intrinsic type, so default them to octet-stream. files do NOT get a
+			// default here: sendFileTrusted derives Content-Type from the file extension (and falls
+			// back to octet-stream itself). pre-setting it would suppress that extension detection.
+			if (type !== 'file') setContentType('application/octet-stream')
 			try {
 				if (type === 'file') await sendFileTrusted(req, res, data, options)
 				else if (type === 'nodeStream') await pipeline(data, res)

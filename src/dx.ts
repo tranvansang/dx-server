@@ -65,7 +65,8 @@ export function dxServer(
 	req: IncomingMessage,
 	res: ServerResponse,
 	options: {
-		jsonBeautify?: boolean
+		charset?: BufferEncoding // not for redirect
+		jsonBeautify?: boolean // json only
 		disableEtag?: boolean
 	} = {},
 ): Chainable {

@@ -212,7 +212,9 @@ const serverChain = chain(
 			}
 		}
 	},
-	chainStatic('/public/*', {root: resolve(import.meta.dirname, 'public')}),
+	// pattern '/public/*' maps a request '/public/x.js' to '<root>/public/x.js', so root is the
+	// directory that *contains* the public folder (not the public folder itself).
+	chainStatic('/public/*', {root: import.meta.dirname}),
 	authContext.chain(), // chain context will set the context value to authContext.value in every request
 	router.post('/api/*', async ({next}) => {
 		// example of catching error for all /api/* routes
@@ -417,15 +419,18 @@ Options:
 
 #### Response Setters
 
-- **`setJson(data, {status?, headers?})`** - Send JSON response
-- **`setHtml(html, {status?, headers?})`** - Send HTML response
-- **`setText(text, {status?, headers?})`** - Send plain text
-- **`setBuffer(buffer, {status?, headers?})`** - Send buffer
-- **`setFile(path, options?)`** - Send file
-- **`setNodeStream(stream, {status?, headers?})`** - Send Node.js stream
-- **`setWebStream(stream, {status?, headers?})`** - Send Web stream
-- **`setRedirect(url, {status?, headers?})`** - Redirect response
-- **`setEmpty({status?, headers?})`** - Send empty response
+Setters only take a `{status?}` option (except `setRedirect`/`setFile`). To set response
+headers, use `getRes().setHeader(name, value)` before (or after) calling a setter.
+
+- **`setJson(data, {status?})`** - Send JSON response (`application/json; charset=utf-8`)
+- **`setHtml(html, {status?})`** - Send HTML response (`text/html; charset=utf-8`)
+- **`setText(text, {status?})`** - Send plain text (`text/plain; charset=utf-8`)
+- **`setBuffer(buffer, {status?})`** - Send buffer (`application/octet-stream`)
+- **`setFile(path, options?)`** - Send file (see `SendFileOptions`)
+- **`setNodeStream(stream, {status?})`** - Send Node.js stream
+- **`setWebStream(stream, {status?})`** - Send Web stream
+- **`setRedirect(url, status)`** - Redirect response; `status` is `301 | 302` (required, positional)
+- **`setEmpty({status?})`** - Send empty response
 
 #### Context Management
 
@@ -450,11 +455,14 @@ Options:
 
   ```javascript
   chainStatic('/public/*', {
-  	root: '/path/to/files',
-  	getPathname(matched) {
-  		return matched.pathname
-  	}, // take URLPattern matched object, epects to return the file path
-  	// the returned file path must be run through decodeURIComponent before returning
+  	// directory that contains the files. A request '/public/x.js' resolves to '<root>/public/x.js',
+  	// so root is the parent of the public folder, not the public folder itself.
+  	root: '/path/to/parent',
+  	// optional. Receives the URLPattern match and returns the file path to serve. The default
+  	// serves decodeURIComponent(url.pathname). A custom getPathname must return an
+  	// already-decoded path. Example: pin a single file regardless of URL:
+  	//   getPathname: () => '/path/to/fixed-file.html'
+  	getPathname: undefined,
   	allowDotfiles: false, // default: dotfiles are denied
   	etag: 'weak', // 'weak' (default) | 'strong' | 'disabled'
   	disableLastModified: false,
@@ -611,12 +619,19 @@ const query = queryFromReq(req)
 Always set appropriate body size limits to prevent DoS attacks:
 
 ```javascript
+import {setBufferBodyDefaultOptions} from 'dx-server/helpers'
+
+// per-parse limit
 chain(
 	getJson.chain({bodyLimit: 1024 * 1024}), // 1MB limit
-	// or globally:
-	dxServer(req, res, {bodyLimit: 5 * 1024 * 1024}), // 5MB
 )
+
+// or globally, once at startup (default is 100KB):
+setBufferBodyDefaultOptions({bodyLimit: 5 * 1024 * 1024}) // 5MB
 ```
+
+Bodies that exceed the limit reject with an error carrying `statusCode: 413`; a body shorter than its
+`Content-Length` rejects with `statusCode: 400`. Map these in your error middleware.
 
 ### Error Handling
 

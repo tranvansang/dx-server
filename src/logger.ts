@@ -7,6 +7,13 @@ export function logJson(json: any) {
 
 let requestCount = 0
 export default function makeLogger(log = logJson, {timezoneOffset = 0} = {}) {
+	// offset designator so a shifted timestamp is unambiguous (e.g. +09:00, -05:00, +00:00)
+	const offsetMin = Math.round(timezoneOffset * 60)
+	const offset = `${offsetMin < 0 ? '-' : '+'}${[
+		String(Math.floor(Math.abs(offsetMin) / 60)).padStart(2, '0'),
+		String(Math.abs(offsetMin) % 60).padStart(2, '0'),
+	].join(':')}`
+
 	return function logger(next: () => any) {
 		const res = getRes()
 		const req = getReq()
@@ -18,18 +25,19 @@ export default function makeLogger(log = logJson, {timezoneOffset = 0} = {}) {
 		log({
 			level: 'info',
 			id: logId,
-			timestamp: [
+			timestamp:
 				[
-					now.getUTCFullYear(),
-					String(now.getUTCMonth() + 1).padStart(2, '0'),
-					String(now.getUTCDate()).padStart(2, '0'),
-				].join('-'),
-				[
-					String(now.getUTCHours()).padStart(2, '0'),
-					String(now.getUTCMinutes()).padStart(2, '0'),
-					[String(now.getUTCSeconds()).padStart(2, '0'), String(now.getUTCMilliseconds()).padStart(3, '0')].join('.'),
-				].join(':'),
-			].join('T'),
+					[
+						now.getUTCFullYear(),
+						String(now.getUTCMonth() + 1).padStart(2, '0'),
+						String(now.getUTCDate()).padStart(2, '0'),
+					].join('-'),
+					[
+						String(now.getUTCHours()).padStart(2, '0'),
+						String(now.getUTCMinutes()).padStart(2, '0'),
+						[String(now.getUTCSeconds()).padStart(2, '0'), String(now.getUTCMilliseconds()).padStart(3, '0')].join('.'),
+					].join(':'),
+				].join('T') + offset,
 			remoteAddress: req.socket.remoteAddress,
 			method: req.method,
 			url: req.url,

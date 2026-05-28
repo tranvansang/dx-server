@@ -63,7 +63,9 @@ function makeRouter(
 	)
 	return next => {
 		const req = getReq()
-		if (method !== undefined && req.method !== method.toUpperCase()) return next()
+		const want = method?.toUpperCase()
+		// a GET route also answers HEAD: HEAD must behave like GET, and writeRes strips the body
+		if (want !== undefined && req.method !== want && (want !== 'GET' || req.method !== 'HEAD')) return next()
 		for (const [urlPattern, handler] of routeWithUrlPatterns) {
 			// '' matches nothing
 			// '/' matches both https://example.com and https://example.com/

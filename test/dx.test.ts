@@ -256,6 +256,52 @@ test('makeDxContext: chain runs maker then next', async () => {
 	strictEqual(res.status, 200)
 })
 
+test('writeRes: chain resolves (no double res.end); HEAD mirrors GET content-length/ETag', async () => {
+	// regression: writeRes called res.end() twice, so the chain rejected with
+	// ERR_STREAM_ALREADY_FINISHED on every non-HEAD response (body still flushed, but unguarded
+	// chains saw an unhandled rejection). HEAD also gained the Content-Length/ETag a GET sends.
+	const errors: any[] = []
+	const server = new Server((req, res) => {
+		dxServer(req, res)(async () => setText('payload')).catch((e: any) => errors.push(e))
+	})
+	const port = await new Promise<number>(resolve =>
+		server.listen(0, () => resolve((server.address() as AddressInfo).port)),
+	)
+	try {
+		const get = await fetchInfo('GET')
+		strictEqual(get.status, 200)
+		strictEqual(get.body, 'payload')
+		ok(get.headers['content-length'], 'GET has content-length')
+		ok(get.headers.etag, 'GET has etag')
+
+		const head = await fetchInfo('HEAD')
+		strictEqual(head.status, 200)
+		strictEqual(head.body, '')
+		strictEqual(head.headers['content-length'], String(Buffer.byteLength('payload')))
+		ok(head.headers.etag, 'HEAD mirrors the GET etag')
+	} finally {
+		server.closeAllConnections?.()
+		await new Promise<void>(resolve => server.close(() => resolve()))
+	}
+	await new Promise<void>(resolve => setImmediate(resolve))
+	strictEqual(errors.length, 0, `chain must not reject (got: ${errors.map(e => e?.code ?? e?.message).join(', ')})`)
+
+	function fetchInfo(method: string) {
+		return new Promise<{status: number; headers: Record<string, any>; body: string}>((resolve, reject) => {
+			const r = request({port, path: '/', method}, res => {
+				const chunks: Buffer[] = []
+				res.on('data', c => chunks.push(c))
+				res.on('end', () =>
+					resolve({status: res.statusCode ?? 0, headers: res.headers, body: Buffer.concat(chunks).toString()}),
+				)
+				res.on('error', reject)
+			})
+			r.on('error', reject)
+			r.end()
+		})
+	}
+})
+
 async function call(
 	handler: () => any,
 	opts: {method?: string; path?: string; headers?: Record<string, string>; serverOptions?: any} = {},

@@ -4,7 +4,7 @@ import {Server, request} from 'node:http'
 import type {AddressInfo} from 'node:net'
 import dxServer, {logger, logJson, setText} from '../lib/index.js'
 
-const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}$/
+const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}$/
 
 test('custom log fn captures request and finish entries', async () => {
 	const entries: any[] = []

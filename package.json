@@ -2,7 +2,10 @@
 	"name": "dx-server",
 	"version": "0.14.0-alpha.1",
 	"main": "./lib/index.js",
-	"repository": "https://github.com/tranvansang/dx-server",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/tranvansang/dx-server.git"
+	},
 	"author": "Sang Tran <t@sang.jp>",
 	"files": [
 		"lib"

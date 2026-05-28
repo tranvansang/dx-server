@@ -104,7 +104,12 @@ export async function writeRes(
 				else if (type === 'nodeStream') await pipeline(data, res)
 				else if (type === 'webStream') await pipeline(Readable.fromWeb(data), res)
 			} catch (e) {
-				if (!res.headersSent) {
+				// A streaming helper (pipeline/sendFileTrusted) may already have destroyed res on
+				// error (e.g. fs open EACCES mid-stream). Calling res.end() on a destroyed response
+				// never resolves, so skip it — otherwise the chain hangs forever.
+				if (res.destroyed) {
+					// nothing to flush; res is already torn down
+				} else if (!res.headersSent) {
 					res.statusCode = (e as Partial<HttpError>)?.statusCode ?? 500
 					await promisify(res.end.bind(res))()
 				} else if (!res.writableEnded) res.destroy(e as Error)

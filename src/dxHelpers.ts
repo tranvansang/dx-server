@@ -168,7 +168,9 @@ export async function writeRes(
 
 	function setContentType(contentType: string) {
 		if (res.headersSent || res.getHeader('content-type')) return
-		res.setHeader('content-type', `${contentType}${charset ? `; charset=${charset}` : ''}`)
+		// only text/* carries a charset; binary (octet-stream) and JSON (always UTF-8 per RFC 8259) do not
+		const cs = charset ?? (contentType.startsWith('text/') ? 'utf-8' : undefined)
+		res.setHeader('content-type', `${contentType}${cs ? `; charset=${cs}` : ''}`)
 	}
 }
 

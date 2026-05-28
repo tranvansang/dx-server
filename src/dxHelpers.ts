@@ -1,8 +1,10 @@
 import type {IncomingMessage, ServerResponse} from 'node:http'
 import {Readable} from 'node:stream'
+import type {ReadableStream as WebReadableStream} from 'node:stream/web'
+import {pipeline} from 'node:stream/promises'
 import {promisify} from 'node:util'
 import {entityTag, isFreshETag} from './vendors/etag.js'
-import {sendFileTrusted, type SendFileOptions} from './staticHelpers.js'
+import {sendFileTrusted, type SendFileOptions, type HttpError} from './staticHelpers.js'
 
 export type DxContext = {
 	charset?: BufferEncoding // not for redirect
@@ -46,7 +48,7 @@ export type DxContext = {
 	  }
 	| {
 			type: 'webStream'
-			data: ReadableStream
+			data: WebReadableStream
 			options: undefined
 	  }
 	| {
@@ -61,111 +63,121 @@ export async function writeRes(
 	res: ServerResponse,
 	{type, data, charset, jsonBeautify, disableEtag, options}: DxContext,
 ) {
-	let bufferOrStream
+	if (res.headersSent) return
+
+	let buffer: Buffer | undefined
 
 	switch (type) {
 		case 'text':
-			setContentType('text/plain')
-			bufferOrStream = Buffer.from(data ?? '', charset)
-			break
 		case 'html':
-			setContentType('text/html')
-			bufferOrStream = Buffer.from(data ?? '', charset)
+			setContentType(type === 'html' ? 'text/html' : 'text/plain')
+			buffer = Buffer.from(data ?? '', charset)
 			break
 		case 'buffer':
 			setContentType('application/octet-stream')
-			bufferOrStream = data ?? Buffer.from('', charset)
-			break
-		case 'nodeStream':
-			setContentType('application/octet-stream')
-			bufferOrStream = data ?? Buffer.from('', charset)
-			break
-		case 'webStream':
-			setContentType('application/octet-stream')
-			bufferOrStream = Readable.fromWeb((data as import('node:stream/web').ReadableStream) ?? new ReadableStream())
+			buffer = data ?? Buffer.from('', charset)
 			break
 		case 'json':
 			setContentType('application/json')
-			bufferOrStream =
+			buffer =
 				data === undefined
 					? Buffer.from('', charset)
 					: Buffer.from(jsonBeautify ? JSON.stringify(data, null, 2) : JSON.stringify(data), charset)
 			break
-		case 'redirect': // https://stackoverflow.com/a/8059718/1398479
-			res.setHeader('location', data)
-			bufferOrStream = Buffer.from('', charset)
-			break
-		case 'file':
-			try {
-				await sendFileTrusted(req, res, data, options)
-			} catch (e) {
-				// do nothing
-			}
-		case undefined:
-			// skip response. Some middleware may handle it outside the chain. For example, express middleware
-			return
+		case 'redirect':
 		case 'empty':
-			bufferOrStream = Buffer.from('', charset)
+			if (type === 'redirect') res.setHeader('location', data)
+			buffer = Buffer.from('', charset)
 			break
+		// Streaming paths own res.end() themselves (via pipeline/sendFileTrusted) and must be
+		// awaited to fulfil the "chain resolves after flush" invariant.
+		case 'nodeStream':
+		case 'webStream':
+			if (!data) {
+				buffer = Buffer.from('', charset)
+				break
+			}
+		case 'file':
+			setContentType('application/octet-stream')
+			try {
+				if (type === 'file') await sendFileTrusted(req, res, data, options)
+				else if (type === 'nodeStream') await pipeline(data, res)
+				else if (type === 'webStream') await pipeline(Readable.fromWeb(data), res)
+			} catch (e) {
+				if (!res.headersSent) {
+					res.statusCode = (e as Partial<HttpError>)?.statusCode ?? 500
+					await promisify(res.end.bind(res))()
+				} else if (!res.writableEnded) res.destroy(e as Error)
+				console.error(e)
+			}
+			await awaitResFinished(res)
+			return
+		case undefined:
+			// No setter was called. End the response with 404 instead of leaving it hung.
+			if (!res.headersSent) res.statusCode = 404
+			if (!res.writableEnded) await promisify(res.end.bind(res))()
+			await awaitResFinished(res)
+			return
 		default:
-			if (!res.getHeader('content-type')) res.setHeader('content-type', 'text/plain')
-			throw new Error(`unsupported response type ${type}`)
+			// Unknown type: programming error. Surface it via console.error but still finish
+			// res so the invariant holds (chain resolves only after flush).
+			console.error(new Error(`unsupported response type ${type satisfies never}`))
+			if (!res.headersSent) res.statusCode = 500
+			if (!res.writableEnded) await promisify(res.end.bind(res))()
+			await awaitResFinished(res)
+			return
 	}
 
-	if (res.headersSent) {
-		// for example, chainStatic or setFile send the response directly
-		if (res.writableFinished) {
-			// skipped: response is already finished
-		} else if (res.writableEnded) {
-			// const defer = Promise.withResolvers()
-			// res.addListener('finish', defer.resolve)
-			// res.addListener('error', defer.reject)
-			// await defer.promise
-			// skipped: response is already ended
-			// chunk is not fully flushed yet
-		} else await promisify(res.end.bind(res))()
-	} else {
-		// https://github.com/expressjs/express/blob/980d881e3b023db079de60477a2588a91f046ca5/lib/response.js#L210
-		// if (res.statusCode === 204) { // No Content
-		// 	res.removeHeader('content-type')
-		// 	res.removeHeader('content-length')
-		// 	res.removeHeader('transfer-encoding')
-		// 	// write nothing
-		// }
-		// if (res.statusCode === 205) { // reset content. Tell client to clear the form, etc.
-		// 	res.setHeader('content-length', 0)
-		// 	res.removeHeader('transfer-encoding')
-		// } else
-		if (req.method !== 'HEAD') {
-			if (Buffer.isBuffer(bufferOrStream)) {
-				// support: 304 (etag), zipping, file etag and last modified
-				res.setHeader('content-length', bufferOrStream.length)
-
-				if (!disableEtag) {
-					const etag = entityTag(bufferOrStream)
-					// const lastModified = res.getHeader('last-modified')
-
-					res.setHeader('ETag', etag)
-					if (isFreshETag(req, etag)) {
-						res.removeHeader('content-type')
-						res.removeHeader('content-length')
-						res.removeHeader('transfer-encoding')
-						res.statusCode = 304
-						// write nothing
-					} else res.write(bufferOrStream)
-				} else res.write(bufferOrStream)
-			} else {
-				bufferOrStream.pipe(res)
-				return // no res.end()
-			}
-			// we do not support content-encoding (gzip, deflate, br) and leave it to reverse proxy or CDN
-		}
-
+	// https://github.com/expressjs/express/blob/980d881e3b023db079de60477a2588a91f046ca5/lib/response.js#L210
+	// if (res.statusCode === 204) { // No Content
+	// 	res.removeHeader('content-type')
+	// 	res.removeHeader('content-length')
+	// 	res.removeHeader('transfer-encoding')
+	// 	// write nothing
+	// }
+	// if (res.statusCode === 205) { // reset content. Tell client to clear the form, etc.
+	// 	res.setHeader('content-length', 0)
+	// 	res.removeHeader('transfer-encoding')
+	// } else
+	if (req.method !== 'HEAD') {
+		res.setHeader('content-length', buffer.length)
+		if (!disableEtag) {
+			const etag = entityTag(buffer)
+			res.setHeader('ETag', etag)
+			if (isFreshETag(req, etag)) {
+				res.removeHeader('content-type')
+				res.removeHeader('content-length')
+				res.removeHeader('transfer-encoding')
+				res.statusCode = 304
+			} else res.write(buffer)
+		} else res.write(buffer)
 		await promisify(res.end.bind(res))()
 	}
+	// we do not support content-encoding (gzip, deflate, br) and leave it to reverse proxy or CDN
+
+	await promisify(res.end.bind(res))()
+
+	await awaitResFinished(res)
 
 	function setContentType(contentType: string) {
 		if (res.headersSent || res.getHeader('content-type')) return
 		res.setHeader('content-type', `${contentType}${charset ? `; charset=${charset}` : ''}`)
 	}
 }
+
+// Resolves when res is fully flushed (finish) or the socket is gone (close).
+// Used as the universal "we're done with this response" signal so every code path
+// in writeRes can guarantee the chain doesn't unwind before bytes hit the wire.
+function awaitResFinished(res: ServerResponse) {
+	if (res.writableFinished || res.destroyed) return Promise.resolve()
+	return new Promise<void>(resolve => {
+		res.once('finish', done)
+		res.once('close', done)
+		function done() {
+			res.off('finish', done)
+			res.off('close', done)
+			resolve()
+		}
+	})
+}
+

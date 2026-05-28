@@ -3,22 +3,22 @@ import {createHash} from 'node:crypto'
 import type {IncomingMessage} from 'node:http'
 import {createReadStream, type Stats} from 'node:fs'
 
-export function entityTag(buf: Buffer, weak?: boolean) {
-	// pre-computed empty
+export function entityTag(buf: Buffer) {
+	// content hash is a strong validator: same bytes -> same tag. never weak (W/).
 	return buf.length
-		? `${buf.length.toString(16)}-${createHash('sha1').update(buf).digest('base64').substring(0, 27)}"`
-		: `${weak ? 'W/' : ''}"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"`
+		? `"${buf.length.toString(16)}-${createHash('sha1').update(buf).digest('base64').substring(0, 27)}"`
+		: '"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk"'
 	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag#directives
 	// weak W/ vs strong eTag
 	// same weak eTag: 2 resources might be semantically equivalent, but not byte-for-byte identical
 }
 
-export async function entityTagPath(fileStat: Stats, filePath: string, weak?: boolean) {
+export async function entityTagPath(fileStat: Stats, filePath: string) {
 	const hash = createHash('sha1')
 	const defer = Promise.withResolvers<Buffer>()
 	createReadStream(filePath).pipe(hash).on('finish', defer.resolve).on('error', defer.reject)
 	await defer.promise
-	return `${fileStat.size.toString(16)}-${hash.digest('base64').substring(0, 27)}`
+	return `"${fileStat.size.toString(16)}-${hash.digest('base64').substring(0, 27)}"`
 	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag#directives
 	// weak W/ vs strong eTag
 	// same weak eTag: 2 resources might be semantically equivalent, but not byte-for-byte identical

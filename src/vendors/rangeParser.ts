@@ -1,13 +1,3 @@
-/**
- * Parse "Range" header `str` relative to the given file `size`.
- *
- * @param {Number} size
- * @param {String} str
- * @param {Object} [options]
- * @return {Array}
- * @public
- */
-
 interface Range {
 	start: number
 	end: number
@@ -17,7 +7,11 @@ interface IndexedRange extends Range {
 }
 export type Ranges = Range[] & {type: string}
 
-export function parseRange(size: number, str: string | undefined, options?: {combine?: boolean}): Ranges | -1 | -2 {
+export function parseRange(
+	size: number,
+	str: string | undefined,
+	{combine, maxRanges = 100}: {combine?: boolean; maxRanges?: number} = {},
+): Ranges | -1 | -2 {
 	if (typeof str !== 'string') throw new TypeError('argument str must be a string')
 
 	const index = str.indexOf('=')
@@ -26,6 +20,11 @@ export function parseRange(size: number, str: string | undefined, options?: {com
 
 	// split the range string
 	const arr = str.slice(index + 1).split(',')
+
+	// bound the number of ranges: each costs a parseInt and combineRanges sorts O(n log n),
+	// so an attacker could amplify CPU with a header full of tiny ranges
+	if (arr.length > maxRanges) return -1
+
 	const ranges = [] as unknown as Ranges
 
 	// add ranges type
@@ -60,7 +59,7 @@ export function parseRange(size: number, str: string | undefined, options?: {com
 	// unsatisifiable
 	if (ranges.length < 1) return -1
 
-	return options && options.combine ? combineRanges(ranges) : ranges
+	return combine ? combineRanges(ranges) : ranges
 }
 
 /**

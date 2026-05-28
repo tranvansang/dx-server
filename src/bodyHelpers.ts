@@ -99,7 +99,7 @@ export async function urlEncodedFromReq(req: IncomingMessage, options?: Partial<
 	if (!charset) return
 	const buffer = await bufferFromReq(req, options)
 	if (buffer) {
-		return (bodyDefaultOptions.urlEncodedParser ?? options?.urlEncodedParser ?? defaultQueryParser)(
+		return (options?.urlEncodedParser ?? bodyDefaultOptions.urlEncodedParser ?? defaultQueryParser)(
 			buffer.toString(charset),
 		)
 	}
@@ -110,7 +110,7 @@ export function urlFromReq(req: IncomingMessage) {
 }
 
 export function queryFromReq(req: IncomingMessage, options?: Partial<BufferBodyOptions>) {
-	return (bodyDefaultOptions.queryParser ?? options?.queryParser ?? defaultQueryParser)(
+	return (options?.queryParser ?? bodyDefaultOptions.queryParser ?? defaultQueryParser)(
 		urlFromReq(req).searchParams.toString(),
 	)
 }

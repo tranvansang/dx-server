@@ -11,6 +11,12 @@ A modern, unopinionated, and performant Node.js server framework built on AsyncL
 - **Request compression is supported.** Request bodies with `Content-Encoding: gzip`, `deflate`, `br`, or `zstd` are decompressed automatically. `zstd` requires Node.js v22.15.0+ or v23.8.0+ (the version that added native Zstd support to `node:zlib`).
 - **Response compression is NOT supported.** dx-server never sets `Content-Encoding` on responses — handle response compression at the reverse proxy / CDN level.
 - **Static file serving supports Range requests.**
+- **`dxServer()` never throws on its own.** The chain returned by `dxServer(req, res)(...)` never throws synchronously or returns a rejected promise _because of dx-server itself_ — writing the response (serialization, headers, ETag, flushing the socket) can never crash the request. Any internal failure is logged server-side with a `[dx-server]` prefix and answered with a generic `500` (`Internal Server Error`) — the error is never leaked to the client; the socket is then closed. The chain rejects **only** when your own `next` chain throws or returns a rejected promise. So it is safe to mount `dxServer` at the top of the `'request'` listener without a `try`/`catch` — wrap your own handlers if _they_ can reject:
+
+  ```javascript
+  // safe: dxServer itself never rejects, so an unhandled rejection here can only come from your code
+  new Server().on('request', (req, res) => dxServer(req, res)(router(routes)))
+  ```
 
 ## Features
 

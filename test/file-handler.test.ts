@@ -13,7 +13,8 @@ import dxServer, {setFile, setNodeStream, setWebStream} from '../lib/index.js'
 //   (or the socket is destroyed). The chain must never resolve while bytes are still
 //   buffered in res or while the response has not been ended.
 
-test('setFile with a missing file ends the response within 2s', async () => {
+test('setFile with a missing file ends the response within 2s', async t => {
+	t.mock.method(console, 'error', () => {}) // the global catch logs the [dx-server] error
 	const server = makeServer(() => setFile('/nonexistent/dx-server-c1-regression.txt'))
 	const port = await listen(server)
 
@@ -26,7 +27,8 @@ test('setFile with a missing file ends the response within 2s', async () => {
 	}
 })
 
-test('setFile to a directory ends the response within 2s', async () => {
+test('setFile to a directory ends the response within 2s', async t => {
+	t.mock.method(console, 'error', () => {})
 	const server = makeServer(() => setFile(import.meta.dirname))
 	const port = await listen(server)
 
@@ -42,7 +44,8 @@ test('setFile to a directory ends the response within 2s', async () => {
 test(
 	'setFile to an unreadable file responds 403 within 2s (no hang/reset)',
 	{skip: process.getuid?.() === 0 ? 'chmod 000 does not deny root' : false},
-	async () => {
+	async t => {
+		t.mock.method(console, 'error', () => {})
 		const dir = mkdtempSync(join(tmpdir(), 'dx-server-test-'))
 		const filePath = join(dir, 'secret.txt')
 		writeFileSync(filePath, 'topsecret')

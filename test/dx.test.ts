@@ -479,8 +479,8 @@ test('writeRes: a body too big to flush synchronously resolves only after finish
 test('writeRes: unknown response type logs the error and finishes with 500 (defensive default arm)', async t => {
 	// the discriminated union makes this unreachable through the public setters, so drive writeRes
 	// directly with a bogus type to exercise the `type satisfies never` backstop.
-	const errors: unknown[] = []
-	t.mock.method(console, 'error', (e: unknown) => void errors.push(e))
+	const errors: unknown[][] = []
+	t.mock.method(console, 'error', (...args: unknown[]) => void errors.push(args))
 
 	const server = new Server((req, res) => {
 		void writeRes(req, res, {type: 'bogus', data: undefined, options: undefined} as any)
@@ -489,13 +489,16 @@ test('writeRes: unknown response type logs the error and finishes with 500 (defe
 		server.listen(0, () => resolve((server.address() as AddressInfo).port)),
 	)
 	try {
-		const status = await new Promise<number>((resolve, reject) => {
+		const status = await new Promise<number>(resolve => {
 			const r = request({port, path: '/', method: 'GET'}, res => {
+				const s = res.statusCode ?? 0 // status is known once headers arrive
 				res.on('data', () => {})
-				res.on('end', () => resolve(res.statusCode ?? 0))
-				res.on('error', reject)
+				// fail() destroys the socket after responding, so resolve on any terminal event
+				res.on('end', () => resolve(s))
+				res.on('close', () => resolve(s))
+				res.on('error', () => resolve(s))
 			})
-			r.on('error', reject)
+			r.on('error', () => resolve(0))
 			r.end()
 		})
 		strictEqual(status, 500)
@@ -504,7 +507,105 @@ test('writeRes: unknown response type logs the error and finishes with 500 (defe
 		await new Promise<void>(resolve => server.close(() => resolve()))
 	}
 	strictEqual(errors.length, 1)
-	match(String((errors[0] as Error)?.message ?? errors[0]), /unsupported response type bogus/)
+	strictEqual(errors[0][0], '[dx-server]')
+	match(String((errors[0][1] as Error)?.message), /unsupported response type bogus/)
+})
+
+// --- writeRes never throws: reproduce every throwing statement ----------------------------------
+// dxServer must settle its chain even when a setter feeds writeRes a value that makes an internal
+// statement throw. Each test reproduces one such throw; with the never-throw guard in place the
+// chain resolves, and without it (e.g. the guard git-stashed) the chain rejects and the test fails —
+// which is how we know the guard, not the harness, holds the guarantee. dxChain mirrors the
+// documented usage exactly: dxServer at the top of the 'request' listener with NO try/catch.
+
+test('dxServer chain settles on an unserializable JSON body (circular reference)', async t => {
+	t.mock.method(console, 'error', () => {}) // silence the expected [dx-server] log
+	const circular: any = {}
+	circular.self = circular // JSON.stringify throws "Converting circular structure to JSON"
+	await dxChain(() => setJson(circular))
+})
+
+test('dxServer chain settles on an unserializable JSON body (BigInt)', async t => {
+	t.mock.method(console, 'error', () => {})
+	// JSON.stringify throws "Do not know how to serialize a BigInt"
+	await dxChain(() => setJson({amount: 1n}))
+})
+
+test('dxServer chain settles on a header-invalid redirect URL', async t => {
+	t.mock.method(console, 'error', () => {})
+	// a newline in the Location value makes res.setHeader throw ERR_INVALID_CHAR
+	await dxChain(() => setRedirect('/\n/evil', 302))
+})
+
+test('dxServer chain settles on a non-string text body (Buffer.from throws)', async t => {
+	t.mock.method(console, 'error', () => {})
+	// a value that slipped past the types: Buffer.from(123) throws ERR_INVALID_ARG_TYPE
+	await dxChain(() => setText(123 as any))
+})
+
+test('writeRes settles when res.end() throws synchronously (torn-down socket)', async t => {
+	t.mock.method(console, 'error', () => {})
+	// res.write/res.end throw synchronously on a destroyed socket; reproduce with a res whose end()
+	// throws — on both the buffered flush path and the endRes (no-setter -> 404) path.
+	const req = {method: 'GET', headers: {}} as any
+
+	await writeRes(req, makeRes() as any, {type: 'text', data: 'hi', options: undefined} as any)
+	await writeRes(req, makeRes() as any, {type: undefined, data: undefined, options: undefined} as any)
+
+	// a res whose end() throws, on both the buffered flush path and the endRes path
+	function makeRes() {
+		return {
+			headersSent: false,
+			writableEnded: false,
+			writableFinished: true, // so awaitResFinished resolves without waiting on events
+			destroyed: false,
+			statusCode: 200,
+			_headers: {} as Record<string, unknown>,
+			setHeader(k: string, v: unknown) {
+				this._headers[k.toLowerCase()] = v
+			},
+			getHeader(k: string) {
+				return this._headers[k.toLowerCase()]
+			},
+			getHeaderNames() {
+				return Object.keys(this._headers)
+			},
+			removeHeader(k: string) {
+				delete this._headers[k.toLowerCase()]
+			},
+			write() {
+				return true
+			},
+			end() {
+				throw new Error('socket gone')
+			},
+			destroy() {
+				this.destroyed = true
+			},
+		}
+	}
+})
+
+test('an internal failure answers with a generic 500 page and destroys the socket (express-style)', async t => {
+	t.mock.method(console, 'error', () => {}) // silence the expected [dx-server] log
+	const circular: any = {}
+	circular.self = circular
+
+	const {status, headers, body, res} = await failResponse(() => setJson(circular))
+	strictEqual(status, 500)
+	strictEqual(headers['content-type'], 'text/html')
+	// the error is never leaked to the client — always the generic message (production behavior)
+	strictEqual(body, 'Internal Server Error')
+	strictEqual(res.destroyed, true, 'the socket is torn down after an internal error')
+})
+
+test('internal-failure 500: a HEAD request reports the status but carries no body', async t => {
+	t.mock.method(console, 'error', () => {})
+	const circular: any = {}
+	circular.self = circular
+	const {status, body} = await failResponse(() => setJson(circular), {method: 'HEAD'})
+	strictEqual(status, 500)
+	strictEqual(body, '', 'HEAD has no body')
 })
 
 async function call(
@@ -544,4 +645,76 @@ async function call(
 		server.closeAllConnections?.()
 		await new Promise<void>(resolve => server.close(() => resolve()))
 	}
+}
+
+// Runs a handler exactly as the docs recommend — dxServer at the top of the 'request' listener with
+// NO try/catch — then awaits the chain so the test fails if it rejected. The catch().finally() ends
+// a response the chain left open (the unprotected build rejects before flushing) so the HTTP client
+// doesn't hang; it never masks the rejection, which is re-observed by the final `await chain`.
+async function dxChain(
+	handler: () => any,
+	opts: {method?: string; path?: string; headers?: Record<string, string>} = {},
+) {
+	let chain!: Promise<unknown>
+	const server = new Server((req, res) => {
+		chain = dxServer(req, res)(async () => handler())
+		void chain.catch(() => {}).finally(() => {
+			if (!res.writableEnded && !res.destroyed) res.end()
+		})
+	})
+	const port = await new Promise<number>(resolve =>
+		server.listen(0, () => resolve((server.address() as AddressInfo).port)),
+	)
+	try {
+		await new Promise<void>(resolve => {
+			const r = request({port, path: opts.path ?? '/', method: opts.method ?? 'GET', headers: opts.headers ?? {}}, res => {
+				res.on('data', () => {})
+				// fail() may destroy the socket after responding; we only need the handler to have run,
+				// so resolve on any terminal event rather than rejecting on the teardown
+				res.on('end', () => resolve())
+				res.on('close', () => resolve())
+				res.on('error', () => resolve())
+			})
+			r.on('error', () => resolve())
+			r.end()
+		})
+	} finally {
+		server.closeAllConnections?.()
+		await new Promise<void>(resolve => server.close(() => resolve()))
+	}
+	await chain // reproduces the raw throw: rejects against the unprotected build
+}
+
+// Drives a handler whose writeRes fails, and returns the response plus the (now torn-down) res.
+// Tolerates the socket teardown fail() performs after responding.
+async function failResponse(handler: () => any, opts: {method?: string} = {}) {
+	let res!: any
+	let chain!: Promise<unknown>
+	const server = new Server((rq, rs) => {
+		res = rs
+		chain = dxServer(rq, rs)(async () => handler())
+		void chain.catch(() => {})
+	})
+	const port = await new Promise<number>(resolve =>
+		server.listen(0, () => resolve((server.address() as AddressInfo).port)),
+	)
+	let status = 0
+	let headers: Record<string, any> = {}
+	const chunks: Buffer[] = []
+	await new Promise<void>(resolve => {
+		const r = request({port, path: '/', method: opts.method ?? 'GET'}, rs => {
+			status = rs.statusCode ?? 0
+			headers = rs.headers
+			rs.on('data', c => chunks.push(c))
+			rs.on('end', () => resolve())
+			rs.on('close', () => resolve())
+			rs.on('error', () => resolve())
+		})
+		r.on('error', () => resolve())
+		r.end()
+	})
+	await chain
+	server.closeAllConnections?.()
+	await new Promise<void>(resolve => server.close(() => resolve()))
+	return {status, headers, body: Buffer.concat(chunks).toString(), res}
 }

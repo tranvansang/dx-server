@@ -8,7 +8,8 @@ import {join} from 'node:path'
 import dxServer, {setFile, setRedirect, setJson, getJson, chainStatic} from '../lib/index.js'
 
 // H5: parseRange caps the number of ranges (default 100) -> 416 above the cap
-test('H5: a Range header with too many ranges is rejected with 416', async () => {
+test('H5: a Range header with too many ranges is rejected with 416', async t => {
+	t.mock.method(console, 'error', () => {}) // the global catch logs the [dx-server] 416
 	const dir = mkdtempSync(join(tmpdir(), 'dx-sec-'))
 	const file = join(dir, 'data.txt')
 	writeFileSync(file, 'HELLO-WORLD-0123456789')

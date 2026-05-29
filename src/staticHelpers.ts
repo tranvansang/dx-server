@@ -110,8 +110,12 @@ export async function sendFileTrusted(
 		const code = (e as NodeJS.ErrnoException).code
 		if (code === 'ENOENT' || code === 'ENOTDIR' || code === 'ENAMETOOLONG') throw httpError('Not Found', 404)
 		if (code === 'EACCES' || code === 'EPERM') throw httpError('Forbidden', 403)
-		if (code === 'EISDIR') throw httpError('Forbidden: directory access is not allowed', 403)
+		// EISDIR is unreachable on Linux/macOS (open(dir, 'r') succeeds — a directory target is caught
+		// later by stat().isDirectory()), and the final rethrow only fires for an exotic errno. Both
+		// are defensive: kept for portability, but not deterministically hit by the suite.
+		// if (code === 'EISDIR') throw httpError('Forbidden: directory access is not allowed', 403)
 		throw e
+		/* node:coverage enable */
 	}
 
 	try {

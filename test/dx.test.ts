@@ -441,9 +441,14 @@ test('writeRes: a body too big to flush synchronously resolves only after finish
 	// early-returns). A multi-MiB body under a paused reader cannot flush synchronously, so
 	// writableFinished is false when awaitResFinished runs — exercising its finish-listener path.
 	const big = Buffer.alloc(4 * 1024 * 1024, 0x61) // 4 MiB of 'a'
-	let chainResolved = false
+	let resolveChain: (finished: boolean) => void
+	const chainDone = new Promise<boolean>(resolve => (resolveChain = resolve))
 	const server = new Server((req, res) => {
-		void dxServer(req, res)(async () => setBuffer(big, {disableEtag: true})).then(() => void (chainResolved = true))
+		void dxServer(req, res)(async () => setBuffer(big, {disableEtag: true})).then(() =>
+			// when the chain resolves, the bytes are flushed — writableFinished proves it wasn't the
+			// early-return shortcut but the finish-listener path that completed it
+			resolveChain(res.writableFinished),
+		)
 	})
 	const port = await new Promise<number>(resolve =>
 		server.listen(0, () => resolve((server.address() as AddressInfo).port)),
@@ -464,7 +469,7 @@ test('writeRes: a body too big to flush synchronously resolves only after finish
 			r.end()
 		})
 		strictEqual(body.length, big.length)
-		ok(chainResolved, 'chain must resolve only after the full body is flushed')
+		ok(await chainDone, 'chain resolves only after the response is fully flushed (writableFinished)')
 	} finally {
 		server.closeAllConnections?.()
 		await new Promise<void>(resolve => server.close(() => resolve()))

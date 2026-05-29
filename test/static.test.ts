@@ -301,6 +301,106 @@ test('security: trailing-slash directory path -> 403', async () => {
 	}
 })
 
+test('security: no-root mode rejects a .. traversal pathname -> 403', async () => {
+	// the root branch is covered elsewhere; this drives the else (no-root) upPathRegexp guard
+	const status = await new Promise<number>((resolve, reject) => {
+		const server = new Server((req, res) => {
+			sendFileTrusted(req, res, '../secret').catch((e: any) => {
+				res.statusCode = e?.statusCode ?? 500
+				res.end()
+			})
+		})
+		server.listen(0, () => {
+			const port = (server.address() as AddressInfo).port
+			const r = request({port, path: '/', method: 'GET'}, res => {
+				res.on('data', () => {})
+				res.on('end', () => {
+					server.close()
+					resolve(res.statusCode ?? 0)
+				})
+				res.on('error', reject)
+			})
+			r.on('error', reject)
+			r.end()
+		})
+	})
+	strictEqual(status, 403)
+})
+
+test('sendFileTrusted bails out when headers were already sent', async () => {
+	// if an upstream layer already committed the response, sendFileTrusted must not stream the file
+	// on top of it (the `if (res.headersSent) return` guard)
+	const dir = mkdtempSync(join(tmpdir(), 'dx-static-'))
+	try {
+		const filePath = join(dir, 'f.txt')
+		writeFileSync(filePath, 'FILE-BODY')
+		const body = await new Promise<string>((resolve, reject) => {
+			const server = new Server((req, res) => {
+				res.writeHead(200, {'content-type': 'text/plain'})
+				res.write('prefix')
+				sendFileTrusted(req, res, filePath)
+					.catch(() => {})
+					.finally(() => {
+						if (!res.writableEnded) res.end()
+					})
+			})
+			server.listen(0, () => {
+				const port = (server.address() as AddressInfo).port
+				const r = request({port, path: '/', method: 'GET'}, res => {
+					const chunks: Buffer[] = []
+					res.on('data', c => chunks.push(c))
+					res.on('end', () => {
+						server.close()
+						resolve(Buffer.concat(chunks).toString())
+					})
+					res.on('error', reject)
+				})
+				r.on('error', reject)
+				r.end()
+			})
+		})
+		// only the prefix is sent — the file body was not streamed because headers were already sent
+		strictEqual(body, 'prefix')
+	} finally {
+		rmSync(dir, {recursive: true, force: true})
+	}
+})
+
+test('sendFileTrusted serves with no options argument (defaults apply)', async () => {
+	// every other path passes an options object; calling it bare exercises the `= {}` parameter default
+	const dir = mkdtempSync(join(tmpdir(), 'dx-static-'))
+	try {
+		const filePath = join(dir, 'f.txt')
+		writeFileSync(filePath, 'defaulted')
+		const server = new Server((req, res) => {
+			sendFileTrusted(req, res, filePath).catch(() => {
+				if (!res.writableEnded) res.end()
+			})
+		})
+		const port = await new Promise<number>(resolve =>
+			server.listen(0, () => resolve((server.address() as AddressInfo).port)),
+		)
+		try {
+			const body = await new Promise<string>((resolve, reject) => {
+				const r = request({port, path: '/', method: 'GET'}, res => {
+					const chunks: Buffer[] = []
+					res.on('data', c => chunks.push(c))
+					res.on('end', () => resolve(Buffer.concat(chunks).toString()))
+					res.on('error', reject)
+				})
+				r.on('error', reject)
+				r.end()
+			})
+			strictEqual(body, 'defaulted')
+		} finally {
+			server.closeAllConnections?.()
+			await new Promise<void>(resolve => server.close(() => resolve()))
+		}
+	} finally {
+		rmSync(dir, {recursive: true, force: true})
+	}
+})
+
 test('sendFileTrusted preserves headers a prior handler already set', async () => {
 	// each header is written only when absent (if (!res.getHeader(...))), so an upstream middleware
 	// can pin Content-Type/Cache-Control/Last-Modified/ETag/Accept-Ranges and sendFileTrusted defers.

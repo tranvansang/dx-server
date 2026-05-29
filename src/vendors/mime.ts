@@ -17,8 +17,8 @@ for (const [type, {extensions = []}] of Object.entries(mimeDb))
 	for (const extension of extensions)
 		extensionToMime[extension] = preferredType(extension, type, extensionToMime[extension])
 
-function preferredType(ext: string, type0?: string, type1?: string) {
-	const score0 = type0 ? mimeScore(type0, mimeDb[type0].source) : 0
+function preferredType(ext: string, type0: string, type1?: string) {
+	const score0 = mimeScore(type0, mimeDb[type0].source)
 	const score1 = type1 ? mimeScore(type1, mimeDb[type1].source) : 0
 
 	return score0 > score1 ? type0 : type1

@@ -60,6 +60,9 @@ const requestStorage = new AsyncLocalStorage<{
 	req: IncomingMessage
 	res: ServerResponse
 }>()
+// dxServer always seeds this context via dxContext.set() before any read, so the maker (the lazy
+// initializer makeDxContext falls back to) is never actually invoked for this instance.
+/* node:coverage ignore next */
 const dxContext = makeDxContext<DxContext>(options => ({...options}) as DxContext)
 export function dxServer(
 	req: IncomingMessage,

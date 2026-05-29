@@ -71,6 +71,9 @@ export async function readStream(
 	stream.on('error', onError)
 
 	function done(err?: Error, result?: Buffer) {
+		// re-entrancy guard: onClose() detaches every listener the moment done() first runs, so a
+		// second terminal event can only sneak in on a same-tick race — defensive, not normally hit.
+		/* node:coverage ignore next 2 */
 		if (completed) return
 		completed = true
 		onClose()
@@ -82,6 +85,9 @@ export async function readStream(
 	}
 
 	function onData(chunk: Buffer) {
+		// same re-entrancy guard: the 'data' listener is removed in onClose(), so a post-completion
+		// chunk is only possible on a same-tick race before detach takes effect.
+		/* node:coverage ignore next 2 */
 		if (completed) return
 		received += chunk.length
 		if (limit !== undefined && received > limit) {

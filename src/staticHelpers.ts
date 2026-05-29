@@ -254,6 +254,9 @@ export async function sendFileTrusted(
 		// stream file: pipeline awaits res 'finish' (full flush) and destroys the source on error
 		await pipeline(handle.createReadStream({start, end}), res)
 	} finally {
+		// best-effort close; the catch arm only runs if close() itself rejects, which it effectively
+		// never does for a handle we just opened — defensive cleanup, not a reachable branch.
+		/* node:coverage ignore next */
 		await handle.close().catch(() => {})
 	}
 }

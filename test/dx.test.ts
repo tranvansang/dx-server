@@ -6,6 +6,7 @@ import {Readable} from 'node:stream'
 import {writeFileSync, mkdtempSync, rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
+import {writeRes} from '../lib/dxHelpers.js'
 import dxServer, {
 	setText,
 	setHtml,
@@ -18,6 +19,7 @@ import dxServer, {
 	setFile,
 	makeDxContext,
 	getReq,
+	getRes,
 } from '../lib/index.js'
 
 test('setText: 200, text/plain, content-length, ETag', async () => {
@@ -149,6 +151,38 @@ test('setWebStream: streams body', async () => {
 	)
 	strictEqual(res.status, 200)
 	strictEqual(res.body.toString(), 'webstream')
+})
+
+test('setNodeStream / setWebStream accept a status', async () => {
+	const node = await call(() => setNodeStream(Readable.from(['x']), {status: 207}))
+	strictEqual(node.status, 207)
+	strictEqual(node.body.toString(), 'x')
+
+	const web = await call(() =>
+		setWebStream(
+			new ReadableStream({
+				start(c) {
+					c.enqueue(new Uint8Array([121]))
+					c.close()
+				},
+			}),
+			{status: 207},
+		),
+	)
+	strictEqual(web.status, 207)
+	strictEqual(web.body.toString(), 'y')
+})
+
+test('a content-type set by the handler is preserved (setters do not override it)', async () => {
+	// setContentType bails out when a content-type is already present, so a setter never clobbers a
+	// type a prior middleware/handler chose — this is how a non-default charset is applied.
+	const res = await call(() => {
+		getRes().setHeader('content-type', 'text/plain; charset=latin1')
+		setText('hi')
+	})
+	strictEqual(res.status, 200)
+	strictEqual(res.headers['content-type'], 'text/plain; charset=latin1')
+	strictEqual(res.body.toString(), 'hi')
 })
 
 test('setNodeStream with falsy data: empty body', async () => {
@@ -400,6 +434,72 @@ test('writeRes: chain resolves (no double res.end); HEAD mirrors GET content-len
 			r.end()
 		})
 	}
+})
+
+test('writeRes: a body too big to flush synchronously resolves only after finish (awaitResFinished listener path)', async () => {
+	// a small body flushes inside res.end() (writableFinished is already true, so awaitResFinished
+	// early-returns). A multi-MiB body under a paused reader cannot flush synchronously, so
+	// writableFinished is false when awaitResFinished runs — exercising its finish-listener path.
+	const big = Buffer.alloc(4 * 1024 * 1024, 0x61) // 4 MiB of 'a'
+	let chainResolved = false
+	const server = new Server((req, res) => {
+		void dxServer(req, res)(async () => setBuffer(big, {disableEtag: true})).then(() => void (chainResolved = true))
+	})
+	const port = await new Promise<number>(resolve =>
+		server.listen(0, () => resolve((server.address() as AddressInfo).port)),
+	)
+	try {
+		const body = await new Promise<Buffer>((resolve, reject) => {
+			const r = request({port, path: '/', method: 'GET'}, res => {
+				const chunks: Buffer[] = []
+				res.pause() // hold back the reader so the server hits backpressure on res.end()
+				setTimeout(() => {
+					res.on('data', c => chunks.push(c))
+					res.on('end', () => resolve(Buffer.concat(chunks)))
+					res.resume()
+				}, 50)
+				res.on('error', reject)
+			})
+			r.on('error', reject)
+			r.end()
+		})
+		strictEqual(body.length, big.length)
+		ok(chainResolved, 'chain must resolve only after the full body is flushed')
+	} finally {
+		server.closeAllConnections?.()
+		await new Promise<void>(resolve => server.close(() => resolve()))
+	}
+})
+
+test('writeRes: unknown response type logs the error and finishes with 500 (defensive default arm)', async t => {
+	// the discriminated union makes this unreachable through the public setters, so drive writeRes
+	// directly with a bogus type to exercise the `type satisfies never` backstop.
+	const errors: unknown[] = []
+	t.mock.method(console, 'error', (e: unknown) => void errors.push(e))
+
+	const server = new Server((req, res) => {
+		void writeRes(req, res, {type: 'bogus', data: undefined, options: undefined} as any)
+	})
+	const port = await new Promise<number>(resolve =>
+		server.listen(0, () => resolve((server.address() as AddressInfo).port)),
+	)
+	try {
+		const status = await new Promise<number>((resolve, reject) => {
+			const r = request({port, path: '/', method: 'GET'}, res => {
+				res.on('data', () => {})
+				res.on('end', () => resolve(res.statusCode ?? 0))
+				res.on('error', reject)
+			})
+			r.on('error', reject)
+			r.end()
+		})
+		strictEqual(status, 500)
+	} finally {
+		server.closeAllConnections?.()
+		await new Promise<void>(resolve => server.close(() => resolve()))
+	}
+	strictEqual(errors.length, 1)
+	match(String((errors[0] as Error)?.message ?? errors[0]), /unsupported response type bogus/)
 })
 
 async function call(

@@ -6,7 +6,7 @@ import {mkdtempSync, writeFileSync, rmSync, symlinkSync, chmodSync, mkdirSync} f
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import dxServer, {chainStatic} from '../lib/index.js'
-import type {SendFileOptions} from '../lib/staticHelpers.js'
+import {sendFileTrusted, type SendFileOptions} from '../lib/staticHelpers.js'
 
 type Options = SendFileOptions & {getPathname?(matched: any): string}
 type FetchOpts = {method?: string; path?: string; headers?: Record<string, string>; pattern?: string}
@@ -283,6 +283,66 @@ test('dotfiles: forbidden by default, allowed with allowDotfiles', async () => {
 		const allowed = await fetchStatic({root: dir, allowDotfiles: true}, {path: '/.secret'})
 		strictEqual(allowed.status, 200)
 		strictEqual(allowed.body.toString(), 'classified')
+	} finally {
+		rmSync(dir, {recursive: true, force: true})
+	}
+})
+
+test('security: trailing-slash directory path -> 403', async () => {
+	// a path that survives normalization with a trailing separator is a directory reference and is
+	// rejected before the file is opened (the pathEndsWithSep guard).
+	const dir = mkdtempSync(join(tmpdir(), 'dx-static-'))
+	try {
+		mkdirSync(join(dir, 'sub'))
+		const r = await fetchStatic({root: dir}, {path: '/sub/'})
+		strictEqual(r.status, 403)
+	} finally {
+		rmSync(dir, {recursive: true, force: true})
+	}
+})
+
+test('sendFileTrusted preserves headers a prior handler already set', async () => {
+	// each header is written only when absent (if (!res.getHeader(...))), so an upstream middleware
+	// can pin Content-Type/Cache-Control/Last-Modified/ETag/Accept-Ranges and sendFileTrusted defers.
+	const dir = mkdtempSync(join(tmpdir(), 'dx-static-'))
+	try {
+		const filePath = join(dir, 'f.txt')
+		writeFileSync(filePath, 'hello')
+		const preset = {
+			'content-type': 'application/x-custom',
+			'cache-control': 'no-store',
+			'last-modified': 'Tue, 01 Jan 1980 00:00:01 GMT',
+			etag: '"pinned"',
+			'accept-ranges': 'none',
+		}
+		const server = new Server((req, res) => {
+			for (const [k, v] of Object.entries(preset)) res.setHeader(k, v)
+			sendFileTrusted(req, res, filePath, {}).catch(() => {
+				if (!res.writableEnded) res.end()
+			})
+		})
+		const port = await new Promise<number>(resolve =>
+			server.listen(0, () => resolve((server.address() as AddressInfo).port)),
+		)
+		try {
+			const headers = await new Promise<Record<string, any>>((resolve, reject) => {
+				const r = request({port, path: '/', method: 'GET'}, res => {
+					res.on('data', () => {})
+					res.on('end', () => resolve(res.headers))
+					res.on('error', reject)
+				})
+				r.on('error', reject)
+				r.end()
+			})
+			strictEqual(headers['content-type'], preset['content-type'])
+			strictEqual(headers['cache-control'], preset['cache-control'])
+			strictEqual(headers['last-modified'], preset['last-modified'])
+			strictEqual(headers['etag'], preset.etag)
+			strictEqual(headers['accept-ranges'], preset['accept-ranges'])
+		} finally {
+			server.closeAllConnections?.()
+			await new Promise<void>(resolve => server.close(() => resolve()))
+		}
 	} finally {
 		rmSync(dir, {recursive: true, force: true})
 	}

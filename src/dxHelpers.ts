@@ -157,8 +157,9 @@ export async function writeRes(
 	} else if (req.method !== 'HEAD') res.write(buffer)
 
 	// we do not support content-encoding (gzip, deflate, br) and leave it to reverse proxy or CDN
-	await promisify(res.end.bind(res))()
-
+	// res.end() is fire-and-forget here: awaitResFinished is the single gate that resolves the chain
+	// once the bytes are flushed (finish) or the socket is gone (close/error).
+	res.end()
 	await awaitResFinished(res)
 
 	function setContentType(contentType: string) {
@@ -177,9 +178,13 @@ function awaitResFinished(res: ServerResponse) {
 	return new Promise<void>(resolve => {
 		res.once('finish', done)
 		res.once('close', done)
+		// a flush error still means "we're done" — resolve (and absorb the error) so the chain neither
+		// hangs nor crashes on an otherwise-unhandled 'error' event.
+		res.once('error', done)
 		function done() {
 			res.off('finish', done)
 			res.off('close', done)
+			res.off('error', done)
 			resolve()
 		}
 	})

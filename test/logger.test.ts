@@ -40,6 +40,20 @@ test('timezoneOffset still produces a valid timestamp format', async () => {
 
 	ok(entries.length >= 1)
 	match(entries[0].timestamp, TIMESTAMP_RE)
+	// a positive offset is signed '+'
+	match(entries[0].timestamp, /\+09:00$/)
+})
+
+test('negative timezoneOffset is signed with a leading minus', async () => {
+	const entries: any[] = []
+	const log = (e: any) => entries.push(e)
+
+	await call(logger(log, {timezoneOffset: -5.5}))
+	await tick()
+
+	ok(entries.length >= 1)
+	match(entries[0].timestamp, TIMESTAMP_RE)
+	match(entries[0].timestamp, /-05:30$/)
 })
 
 test('non-production headers are filtered to the allowlist', async () => {
